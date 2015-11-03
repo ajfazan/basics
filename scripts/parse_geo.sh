@@ -1,5 +1,13 @@
 #!/bin/sh
 
+if [ ${#} -ne 1 ]; then
+
+  echo -e "\nUsage:"
+  echo -e "\t$(basename ${0}) <SUM_FILE>"
+  exit -1
+
+fi
+
 if [ ! -f ${1} ]; then
 
   echo "${1} does not exist in filesystem"
