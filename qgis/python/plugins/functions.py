@@ -140,3 +140,53 @@ def removeInnerRings( layer, name ):
 
   result.updateExtents()
   return result
+
+def removeDuplicates( layer, name ):
+
+  crs = layer.crs()
+
+  result = QgsVectorLayer( 'Polygon?crs=' + crs.authid(), name, "memory" )
+  pr = result.dataProvider()
+
+  iterator = layer.getFeatures()
+
+  for feature in iterator:
+
+    geom = feature.geometry()
+
+    if geom.type() == QGis.Polygon:
+
+      p = geom.asPolygon()
+      if len( p ) == 1: # 1 ring == simple polygon
+
+        # print "Vertices: %d" % len( p[0] )
+
+        l = len( p[0] ) - 1
+        i = 0
+
+        while i < l:
+
+          v = p[0][i]
+
+          s = p[0][i+1:-1]
+
+          if v in s:
+
+            j = s.index( v ) + i + 1
+            # print "index = %d" % j
+            del( p[0][i+1:j+1] )
+            l = len( p[0] ) - 1
+            # print p[0]
+
+          i += 1
+
+        # print "Vertices: %d" % len( p[0] )
+        geom = QgsGeometry.fromPolygon( p )
+
+    f = QgsFeature()
+    f.setGeometry( geom )
+    f.setAttributes( feature.attributes() )
+    pr.addFeatures( [f] )
+
+  result.updateExtents()
+  return result
