@@ -109,8 +109,6 @@ def removeInnerRings( layer, name ):
         p = geom.asPolygon()
         if len( p ) == 1: # 1 ring == simple polygon
 
-          # print "Vertices: %d" % len( p[0] )
-
           l = len( p[0] ) - 1
           i = 0
 
@@ -121,16 +119,12 @@ def removeInnerRings( layer, name ):
             s = p[0][i+1:-1]
 
             if v in s:
-
               j = s.index( v ) + i + 1
-              # print "index = %d" % j
               del( p[0][i+1:j+1] )
               l = len( p[0] ) - 1
-              # print p[0]
 
             i += 1
 
-          # print "Vertices: %d" % len( p[0] )
           geom = QgsGeometry.fromPolygon( p )
 
     f = QgsFeature()
@@ -159,28 +153,26 @@ def removeDuplicates( layer, name ):
       p = geom.asPolygon()
       if len( p ) == 1: # 1 ring == simple polygon
 
-        # print "Vertices: %d" % len( p[0] )
+        q = p[0]
 
-        l = len( p[0] ) - 1
+        l = len( q ) - 1
         i = 0
 
         while i < l:
 
-          v = p[0][i]
+          v = q[i]
 
-          s = p[0][i+1:-1]
+          s = q[i+1:-1]
 
-          if v in s:
-
+          while v in s:
             j = s.index( v ) + i + 1
-            # print "index = %d" % j
-            del( p[0][i+1:j+1] )
-            l = len( p[0] ) - 1
-            # print p[0]
+            del( q[j] )
+            s = q[i+1:-1]
 
+          l = len( q ) - 1
           i += 1
 
-        # print "Vertices: %d" % len( p[0] )
+        print "Vertices: %d" % len( p[0] )
         geom = QgsGeometry.fromPolygon( p )
 
     f = QgsFeature()
