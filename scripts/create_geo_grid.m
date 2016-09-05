@@ -19,9 +19,9 @@ function create_geo_grid( northern_lat,
   endfor
 
   fclose( stream );
-  
+
   info = sprintf( '%s.info', filename );
-  
+
   stream = fopen( info, 'w' );
 
   fprintf( stream, '*** GRID INFO ***\n' );
