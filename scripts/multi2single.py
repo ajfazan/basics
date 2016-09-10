@@ -2,6 +2,7 @@
 
 import os
 import sys
+import argparse
 
 try:
   from osgeo import ogr
@@ -9,6 +10,9 @@ try:
 except:
   print sys.stderr, "OGR not found... Exiting"
   sys.exit( 1 )
+
+parser = argparse.ArgumentParser( description = "Merge polygons into a single polygons" )
+
 
 driver = ogr.GetDriverByName( "ESRI Shapefile" )
 
@@ -33,6 +37,13 @@ else:
     for feature in layer:
       result = result.Union( feature.GetGeometryRef() )
 
+    if len( sys.argv ) == 4 and sys.argv[3] == "simple":
+      simple = ogr.Geometry( ogr.wkbPolygon )
+      simple.AddGeometry( result.GetGeometryRef( 0 ) )
+      result = simple
+
+    print "Resulting polygon has %d ring(s)" % ( result.GetGeometryCount() )
+
     outDriver = ogr.GetDriverByName( "ESRI Shapefile" )
 
     # Remove output shapefile if it already exists
@@ -45,14 +56,37 @@ else:
                                           geom_type=ogr.wkbPolygon )
 
     # Add an ID field
-    idField = ogr.FieldDefn( "id", ogr.OFTInteger )
+    idField = ogr.FieldDefn( "ID", ogr.OFTInteger )
     outLayer.CreateField( idField )
+
+    # Add a VERTICES fiedl
+    verticesField = ogr.FieldDefn( "VERTICES", ogr.OFTInteger )
+    outLayer.CreateField( verticesField )
+
+    # Add an AREA field
+    areaField = ogr.FieldDefn( "AREA", ogr.OFTReal )
+    areaField.SetWidth( 18 )
+    areaField.SetPrecision( 9 )
+    outLayer.CreateField( areaField )
+
+    # Add a PERIMETER field
+    perimeterField = ogr.FieldDefn( "PERIMETER", ogr.OFTReal )
+    perimeterField.SetWidth( 18 )
+    perimeterField.SetPrecision( 9 )
+    outLayer.CreateField( perimeterField )
+
+    vertices = 0
+    for k in range( 0, result.GetGeometryCount() ):
+      vertices += result.GetGeometryRef( k ).GetPointCount() - 1
 
     # Create the feature and set values
     featureDefn = outLayer.GetLayerDefn()
     feature = ogr.Feature( featureDefn )
     feature.SetGeometry( result )
-    feature.SetField( "id", 0 )
+    feature.SetField( "ID", 0 )
+    feature.SetField( "VERTICES", vertices )
+    feature.SetField( "AREA", result.GetArea() )
+    feature.SetField( "PERIMETER", result.Boundary().Length() )
     outLayer.CreateFeature( feature )
 
     feature.Destroy()
