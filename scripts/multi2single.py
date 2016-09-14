@@ -2,7 +2,6 @@
 
 import os
 import sys
-import argparse
 
 try:
   from osgeo import ogr
@@ -10,9 +9,6 @@ try:
 except:
   print sys.stderr, "OGR not found... Exiting"
   sys.exit( 1 )
-
-parser = argparse.ArgumentParser( description = "Merge polygons into a single polygons" )
-
 
 driver = ogr.GetDriverByName( "ESRI Shapefile" )
 
@@ -26,8 +22,7 @@ else:
 
   geom_type = layer.GetGeomType()
 
-  if geom_type == ogr.wkbPolygon or geom_type == ogr.wkbMultiPolygon:
-
+  if ( geom_type == ogr.wkbPolygon ) or ( geom_type == ogr.wkbMultiPolygon ):
 
     count = layer.GetFeatureCount()
     print "INFO: Merging %d features into a single feature" % ( count )
@@ -37,7 +32,7 @@ else:
     for feature in layer:
       result = result.Union( feature.GetGeometryRef() )
 
-    if len( sys.argv ) == 4 and sys.argv[3] == "simple":
+    if ( len( sys.argv ) == 4 ) and ( sys.argv[3] == "simple" ):
       simple = ogr.Geometry( ogr.wkbPolygon )
       simple.AddGeometry( result.GetGeometryRef( 0 ) )
       result = simple
@@ -48,7 +43,11 @@ else:
 
     # Remove output shapefile if it already exists
     if os.path.exists( sys.argv[2] ):
+      try:
         outDriver.DeleteDataSource( sys.argv[2] )
+      except:
+        print sys.stderr, "Unable to delete existing dataset"
+        sys.exit( 1 )
 
     # Create the output shapefile
     outDataSource = outDriver.CreateDataSource( sys.argv[2] )
@@ -65,13 +64,13 @@ else:
 
     # Add an AREA field
     areaField = ogr.FieldDefn( "AREA", ogr.OFTReal )
-    areaField.SetWidth( 18 )
+    areaField.SetWidth( 24 )
     areaField.SetPrecision( 9 )
     outLayer.CreateField( areaField )
 
     # Add a PERIMETER field
     perimeterField = ogr.FieldDefn( "PERIMETER", ogr.OFTReal )
-    perimeterField.SetWidth( 18 )
+    perimeterField.SetWidth( 24 )
     perimeterField.SetPrecision( 9 )
     outLayer.CreateField( perimeterField )
 
