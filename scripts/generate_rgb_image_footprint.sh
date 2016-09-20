@@ -10,7 +10,7 @@ fi
 
 if [ ! -f ${1} ]; then
 
-  echo "First input argument must be an image file"
+  echo "First input argument must be an image file (GDAL supported format)"
   exit 1
 
 fi
@@ -31,7 +31,7 @@ if [ ! -d ${3} ]; then
 
 fi
 
-LOGICAL=$(printf "%s( %s( A!=%s, B!=%s ), C!=%s)" \
+LOGICAL=$(printf "%s( %s( A!=%s, B!=%s ), C!=%s )" \
                   "numpy.logical_or" "numpy.logical_or" ${2} ${2} ${2})
 
 TEMP="${TMP}/orto_mask_"$(shuf -i 0-1000 -n 1)".tif"

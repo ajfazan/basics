@@ -10,7 +10,7 @@ fi
 
 if [ ! -f ${1} ]; then
 
-  echo "First input argument must be an image file"
+  echo "First input argument must be an image file (GDAL supported format)"
   exit 1
 
 fi

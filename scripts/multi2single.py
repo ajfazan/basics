@@ -12,13 +12,13 @@ except:
 
 driver = ogr.GetDriverByName( "ESRI Shapefile" )
 
-data = driver.Open( sys.argv[1], 0 )
+data_set = driver.Open( sys.argv[1], 0 )
 
-if data is None:
+if data_set is None:
   print sys.stderr, "Unable to open %s" % ( os.path.basename( sys.argv[1] ) )
   sys.exit( 1 )
 else:
-  layer = data.GetLayer()
+  layer = data_set.GetLayer()
 
   geom_type = layer.GetGeomType()
 
@@ -31,6 +31,9 @@ else:
 
     for feature in layer:
       result = result.Union( feature.GetGeometryRef() )
+
+    if result.GetGeometryType() == ogr.wkbPolygon:
+      print "Resulting region is a single polygon"
 
     if ( len( sys.argv ) == 4 ) and ( sys.argv[3] == "simple" ):
       simple = ogr.Geometry( ogr.wkbPolygon )
@@ -64,13 +67,13 @@ else:
 
     # Add an AREA field
     areaField = ogr.FieldDefn( "AREA", ogr.OFTReal )
-    areaField.SetWidth( 24 )
+    areaField.SetWidth( 25 )
     areaField.SetPrecision( 9 )
     outLayer.CreateField( areaField )
 
     # Add a PERIMETER field
     perimeterField = ogr.FieldDefn( "PERIMETER", ogr.OFTReal )
-    perimeterField.SetWidth( 24 )
+    perimeterField.SetWidth( 25 )
     perimeterField.SetPrecision( 9 )
     outLayer.CreateField( perimeterField )
 
