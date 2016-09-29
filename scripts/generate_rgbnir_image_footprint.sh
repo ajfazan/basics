@@ -1,12 +1,28 @@
 #!/bin/sh
 
+function help {
+
+  printf "\nUsage:\n\t$(basename ${0}) [ -h | -e ]"
+  printf " <IMAGE_FILE> <NODATA_VALUE> <OUT_DIR>\n"
+  exit ${1}
+}
+
+F="numpy.logical_or"
+
+while getopts "eh" OPT; do
+  case ${OPT} in
+    e) F="numpy.logical_and";;
+    h) help 0;;
+  esac
+done
+
+shift $((${OPTIND} - 1))
+
 if [ ${#} -ne 3 ]; then
 
-  echo -e "Usage:\n\t$(basename ${0}) <IMAGE_FILE> <NODATA_VALUE> <OUT_DIR>"
-  exit 0
+  help 1
 
 fi
-
 
 if [ ! -f ${1} ]; then
 
@@ -32,9 +48,7 @@ if [ ! -d ${3} ]; then
 fi
 
 LOGICAL=$(printf "%s( %s( %s( A!=%s, B!=%s ), C!=%s ), D!=%s )" \
-                 "numpy.logical_and" \
-                 "numpy.logical_and" \
-                 "numpy.logical_and" ${2} ${2} ${2} ${2})
+                 ${F} ${F} ${F} ${2} ${2} ${2} ${2})
 
 TEMP="${TMP}/orto_mask_"$(shuf -i 0-1000 -n 1)".tif"
 
