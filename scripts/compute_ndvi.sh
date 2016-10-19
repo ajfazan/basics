@@ -8,10 +8,23 @@ if [ ${#} -ne 3 ]; then
 
 fi
 
-TARGET=$(dirname ${1})"/"$(echo ${1} | sed 's/.tif/_NDVI.tif/')
+BASE=$(basename ${1} | cut -d. -f1)
 
-gdal_calc.py -A ${1} --A_band ${2} -B ${1} --B_band ${3} --outfile=${TARGET} \
+RED_BAND="/tmp/"${BASE}"_RED.tif"
+NIR_BAND="/tmp/"${BASE}"_NIR.tif"
+
+gdal_calc.py -A ${1} --A_band ${2} --calc="A + ( A == 0 )" \
+             --outfile=${RED_BAND} --type="Float32" 2>&1 1>/dev/null
+
+gdal_calc.py -A ${1} --A_band ${3} --calc="A + ( A == 0 )" \
+             --outfile=${NIR_BAND} --type="Float32" 2>&1 1>/dev/null
+
+TARGET=$(dirname ${1})"/"${BASE}"_NDVI.tif"
+
+gdal_calc.py -A ${RED_BAND} -B ${NIR_BAND} --outfile=${TARGET} \
              --overwrite --type=Float32 --NoDataValue=-9999 \
-             --calc="numpy.float64( ( B - 2 * ( B == 0 ) ) - A ) / ( ( B + ( B == 0 ) ) + A )"
+             --calc="numpy.float64( B - A ) / ( B + A )" 2>&1 1>/dev/null
 
 gdal_edit.py -stats ${TARGET}
+
+rm -f ${RED_BAND} ${NIR_BAND}
