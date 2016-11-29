@@ -50,17 +50,23 @@ fi
 LOGICAL=$(printf "%s( %s( %s( A!=%s, B!=%s ), C!=%s ), D!=%s )" \
                  ${F} ${F} ${F} ${2} ${2} ${2} ${2})
 
-TEMP="${TMP}/orto_mask_"$(shuf -i 0-1000 -n 1)".tif"
+TEMP1="${TMP}/image_mask_"$(shuf -i 0-1000 -n 1)".tif"
 
 gdal_calc.py -A ${1} --A_band=1 \
              -B ${1} --B_band=2 \
              -C ${1} --C_band=3 \
              -D ${1} --D_band=4 \
              --calc="127*${LOGICAL}" --NoDataValue=255 --type=Byte \
-             --overwrite --outfile=${TEMP} 1>/dev/null 2>&1
+             --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
 
-TARGET=${3}/$(basename {1} | cut -d. -f1)".shp"
+TEMP2=$(echo ${TEMP1} | sed 's/tif/shp/')
 
-gdal_polygonize -q ${TEMP} -f "ESRI Shapefile" ${TARGET}
+gdal_polygonize.py -q ${TEMP1} -f "ESRI Shapefile" ${TEMP2}
 
-rm -f ${TEMP}
+TARGET=${3}"/"$(basename ${1} | cut -d. -f1)".shp"
+
+ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127"
+
+rm -f ${TEMP1}
+
+killshape.sh ${TEMP2}

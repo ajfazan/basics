@@ -7,7 +7,7 @@ try:
   from osgeo import ogr
 
 except:
-  print sys.stderr, "OGR not found... Exiting"
+  print sys.stderr, "OGR module not found... Exiting"
   sys.exit( 1 )
 
 driver = ogr.GetDriverByName( "ESRI Shapefile" )
@@ -61,7 +61,7 @@ else:
     idField = ogr.FieldDefn( "ID", ogr.OFTInteger )
     outLayer.CreateField( idField )
 
-    # Add a VERTICES fiedl
+    # Add a VERTICES field
     verticesField = ogr.FieldDefn( "VERTICES", ogr.OFTInteger )
     outLayer.CreateField( verticesField )
 
