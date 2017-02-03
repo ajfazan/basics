@@ -3,7 +3,7 @@
 if [ ${#} -ne 5 ] || [ ! -f ${1} ]; then
 
   printf "\nUsage:\n\t%s" $(basename ${0})
-  printf " <CSV_FILE> <FIELD_SEPARATOR> <FIELD_LIST> <SIGMA_H> <SIGMA_V>\n"
+  printf " <CSV_FILE> <FIELD_SEPARATOR> <FIELD_LIST> <SIGMA_H_T> <SIGMA_V_T>\n"
   exit 0
 
 fi

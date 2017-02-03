@@ -8,4 +8,6 @@ if [ ${#} -ne 3 ]; then
 
 fi
 
-wget -c --recursive ftp://cddis.gsfc.nasa.gov/gps/products/ionex/${1}/${2}/igsg${2}"0.15i.Z" -P ${3}
+IONEX=$(printf "igsg%s0.%si.Z" ${2} $(echo "${1} - 2000" | bc))
+
+wget -c --recursive ftp://cddis.gsfc.nasa.gov/gps/products/ionex/${1}/${2}/${IONEX} -P ${3}
