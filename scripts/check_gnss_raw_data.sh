@@ -1,5 +1,12 @@
 #!/bin/sh
 
+if [ ${#} -ne 1 ]; then
+
+  echo -e "\nUsage:\n\t$(basename ${0}) <GNSS_RAW_DATA_DIR>"
+  exit 0
+
+fi
+
 if [ ! -d ${1} ]; then
 
   echo "${1} is not a GNSS raw data directory"

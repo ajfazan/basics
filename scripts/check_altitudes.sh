@@ -20,7 +20,7 @@ do
 
   if [ $(echo "(${h} - ${N}) == ${H}" | bc) -ne 1 ]; then
 
-    echo "INFO: Point ID=${ID} altitudes mismatch"
+    echo "INFO: Altitudes of point '${ID}' in file '${1}' mismatch"
 
   fi
 

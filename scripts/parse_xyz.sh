@@ -30,7 +30,7 @@ EXP1="$((${N}+1)),$((${N}+3))p"
 sed -n ${EXP1} ${TARGET1} | cut -d')' -f2 \
   | sed -r 's/ +/ /g ; s/^ +//g' | cut -d' ' -f1 >> ${TARGET2}
 
-grep '(IGb08)->SIRGAS2000' ${TARGET1} | cut -d: -f2 | sed -r 's/^ +//g' >> ${TARGET2}
+grep '\->SIRGAS2000' ${TARGET1} | cut -d: -f2 | sed -r 's/^ +//g' >> ${TARGET2}
 
 sed ':a;N;$!ba;s/\n/\t/g' ${TARGET2}
 

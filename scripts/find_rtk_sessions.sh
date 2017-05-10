@@ -2,7 +2,7 @@
 
 COUNT=0
 
-for DIR in $(find ./ -name "*RTK" -type d); do
+for DIR in $(find ./ -name "*_RTK" -type d); do
 
   cd ${DIR}
 

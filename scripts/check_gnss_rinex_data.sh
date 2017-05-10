@@ -1,5 +1,12 @@
 #!/bin/sh
 
+if [ ${#} -ne 1 ]; then
+
+  echo -e "\nUsage:\n\t$(basename ${0}) <RINEX_DATA_DIR>"
+  exit 0
+
+fi
+
 if [ ! -d ${1} ]; then
 
   echo "${1} is not a GNSS RINEX data directory"
@@ -16,7 +23,6 @@ ls *.* > collection.dat
 if [ $(cat collection.dat | wc -l) -ne 3 ]; then
 
   echo "WARNING: Check RINEX data files for point ${STATION}"
-  exit 2
 
 fi
 

@@ -8,6 +8,13 @@ if [ ${?} -ne 0 ]; then
 
 fi
 
+if [ ${#} -ne 2 ] || [ ! -f ${1} ]; then
+
+  printf "\nUsage:\n\t%s <TEQC_SUM_FILE> <TARGET_DIR>\n" $(basename ${0})
+  exit -1
+
+fi
+
 DIR=$(dirname ${1})
 BASE=$(basename ${1})
 
@@ -46,7 +53,7 @@ if [ "${G_FILE}" != "" ]; then
     teqc ${G_FILE} > ${RESULT} 2>/dev/null
   fi
 
-  sed -i '4,5d' ${RESULT}
+  # sed -i '4,5d' ${RESULT}
 
 fi
 
@@ -62,7 +69,7 @@ if [ "${R_FILE}" != "" ]; then
 
   teqc -R${R} ${R_FILE} > ${RESULT} 2>/dev/null
 
-  sed -i '4,5d' ${RESULT}
+  # sed -i '4,5d' ${RESULT}
 
 fi
 
@@ -70,4 +77,4 @@ RESULT=${TARGET}/$(basename ${O_FILE})
 
 teqc ${OPTIONS} ${O_FILE} > ${RESULT} 2>/dev/null
 
-sed -i -r '/^teqc edited/d ; 4,5d' ${RESULT}
+# sed -i -r '/^teqc edited/d ; 4,5d' ${RESULT}

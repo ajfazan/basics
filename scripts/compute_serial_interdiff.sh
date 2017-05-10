@@ -16,8 +16,8 @@ for FILE in $(find ${1} -name "*.shp" -type f); do
   TMP1="/tmp/A.tif"
   TMP2="/tmp/B.tif"
 
-  gdalwarp -q -cutline ${FILE} -crop_to_cutline -r near -multi ${IMG1} ${TMP1}
-  gdalwarp -q -cutline ${FILE} -crop_to_cutline -r near -multi ${IMG2} ${TMP2}
+  gdalwarp -q -overwrite -cutline ${FILE} -crop_to_cutline -r near -multi ${IMG1} ${TMP1}
+  gdalwarp -q -overwrite -cutline ${FILE} -crop_to_cutline -r near -multi ${IMG2} ${TMP2}
 
   TARGET=${TAG}".tif"
 

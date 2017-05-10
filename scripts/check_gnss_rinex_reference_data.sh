@@ -1,8 +1,15 @@
 #!/bin/sh
 
+if [ ${#} -ne 1 ]; then
+
+  echo -e "\nUsage:\n\t$(basename ${0}) <RINEX_DATA_DIR>"
+  exit 0
+
+fi
+
 if [ ! -d ${1} ]; then
 
-  echo "${1} is not a GNSS RINEX data directory"
+  echo "${1} is not a GNSS RINEX reference data directory"
   exit 1
 
 fi

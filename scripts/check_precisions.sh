@@ -39,7 +39,7 @@ do
   if [ $(echo "${SIGMA_H} > ${4}" | bc) -eq 1 ] \
   || [ $(echo "${SIGMA_V} > ${5}" | bc) -eq 1 ]; then
 
-    echo "INFO: Point ID=${ID} is less precise than required!"
+    echo "INFO: Point '${ID}' in file '${1}' is less precise than required!"
 
   fi
 
