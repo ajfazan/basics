@@ -2,16 +2,16 @@
 
 function help {
 
-  printf "\nUsage:\n\t$(basename ${0}) [ -h | -e ]"
+  printf "\nUsage:\n\t$(basename ${0}) [ -h | -p ]"
   printf " <IMAGE_FILE> <NODATA_VALUE> <OUT_DIR>\n"
   exit ${1}
 }
 
-F="numpy.logical_or"
+PARTIAL=0
 
-while getopts "eh" OPT; do
+while getopts "ph" OPT; do
   case ${OPT} in
-    e) F="numpy.logical_and";;
+    p) PARTIAL=1;;
     h) help 0;;
   esac
 done
@@ -47,15 +47,40 @@ if [ ! -d ${3} ]; then
 
 fi
 
-LOGICAL=$(printf "%s( %s( A!=%s, B!=%s ), C!=%s )" ${F} ${F} ${2} ${2} ${2})
+RAND=$(shuf -i 0-1000 -n 1)
 
-TEMP1="${TMP}/image_mask_"$(shuf -i 0-1000 -n 1)".tif"
+R_LOGICAL_BAND="${TMP}/_R_logical_${RAND}.tif"
+G_LOGICAL_BAND="${TMP}/_G_logical_${RAND}.tif"
+B_LOGICAL_BAND="${TMP}/_B_logical_${RAND}.tif"
 
-gdal_calc.py -A ${1} --A_band=1 \
-             -B ${1} --B_band=2 \
-             -C ${1} --C_band=3 \
-             --calc="127*${LOGICAL}" --NoDataValue=255 --type=Byte \
-             --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
+gdal_calc.py -A ${1} --A_band=1 --calc="A!=${2}" --NoDataValue=-1 --type=Byte \
+                                --outfile=${R_LOGICAL_BAND} > /dev/null 2>&1
+
+gdal_calc.py -A ${1} --A_band=2 --calc="A!=${2}" --NoDataValue=-1 --type=Byte \
+                                --outfile=${G_LOGICAL_BAND} > /dev/null 2>&1
+
+gdal_calc.py -A ${1} --A_band=3 --calc="A!=${2}" --NoDataValue=-1 --type=Byte \
+                                --outfile=${B_LOGICAL_BAND} > /dev/null 2>&1
+
+TEMP1="${TMP}/image_mask_${RAND}.tif"
+
+if [ ${PARTIAL} -eq 1 ]; then
+
+  gdal_calc.py -A ${R_LOGICAL_BAND} \
+               -B ${G_LOGICAL_BAND} \
+               -C ${B_LOGICAL_BAND} \
+               --calc="127 * ( ( A + B + C ) == 3 )" --NoDataValue=255 \
+               --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
+
+else
+
+  gdal_calc.py -A ${R_LOGICAL_BAND} \
+               -B ${G_LOGICAL_BAND} \
+               -C ${B_LOGICAL_BAND} \
+               --calc="127 * ( ( A + B + C ) != 0 )" --NoDataValue=255 \
+               --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
+
+fi
 
 TEMP2=$(echo ${TEMP1} | sed 's/tif/shp/')
 
@@ -65,6 +90,6 @@ TARGET=${3}"/"$(basename ${1} | cut -d. -f1)".shp"
 
 ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127"
 
-rm -f ${TEMP1}
+rm -f ${R_LOGICAL_BAND} ${G_LOGICAL_BAND} ${B_LOGICAL_BAND} ${TEMP1}
 
 killshape.sh ${TEMP2}
