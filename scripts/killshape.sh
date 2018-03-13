@@ -9,12 +9,20 @@ if [ "$(echo ${BASE} | cut -d. -f2 | tr A-Z a-z)" != "shp" ]; then
 
 fi
 
-BASE=$(echo ${BASE} | cut -d. -f1)
+if [ -d ${1} ]; then
 
-DIR=$(dirname ${1})
+  rm -rf ${1}
 
-for EXT in $(echo "shp shx sbx sbn dbf prj qpj cpg"); do
+elif [ -f ${1} ]; then
 
-  find ${DIR} -mindepth 1 -maxdepth 1 -iname ${BASE}"."${EXT} -type f -delete
+  BASE=$(echo ${BASE} | cut -d. -f1)
 
-done
+  DIR=$(dirname ${1})
+
+  for EXT in $(echo "shp shx sbx sbn dbf prj qpj cpg"); do
+
+    find ${DIR} -mindepth 1 -maxdepth 1 -iname ${BASE}"."${EXT} -type f -delete
+
+  done
+
+fi
