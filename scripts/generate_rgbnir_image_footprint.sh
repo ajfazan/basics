@@ -2,16 +2,16 @@
 
 function help {
 
-  printf "\nUsage:\n\t$(basename ${0}) [ -h | -e ]"
+  printf "\nUsage:\n\t$(basename ${0}) [ -h | -f ]"
   printf " <IMAGE_FILE> <NODATA_VALUE> <OUT_DIR>\n"
   exit ${1}
 }
 
 F="numpy.logical_or"
 
-while getopts "eh" OPT; do
+while getopts "fh" OPT; do
   case ${OPT} in
-    e) F="numpy.logical_and";;
+    f) F="numpy.logical_and";;
     h) help 0;;
   esac
 done
@@ -65,8 +65,18 @@ gdal_polygonize.py -q ${TEMP1} -f "ESRI Shapefile" ${TEMP2}
 
 TARGET=${3}"/"$(basename ${1} | cut -d. -f1)".shp"
 
-ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127"
+ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127" -overwrite
 
-rm -f ${TEMP1}
+LAYER=$(basename ${TARGET} .shp)
+
+SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${LAYER})
+
+ogrinfo -q ${TARGET} -sql "${SQL}"
+
+SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
+
+ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
 
 killshape.sh ${TEMP2}
+
+rm -f ${TEMP1}

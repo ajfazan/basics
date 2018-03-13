@@ -2,16 +2,16 @@
 
 function help {
 
-  printf "\nUsage:\n\t$(basename ${0}) [ -h | -p ]"
+  printf "\nUsage:\n\t$(basename ${0}) [ -h | -f ]"
   printf " <IMAGE_FILE> <NODATA_VALUE> <OUT_DIR>\n"
   exit ${1}
 }
 
-PARTIAL=0
+FUNCTION="numpy.logical_or"
 
-while getopts "ph" OPT; do
+while getopts "fh" OPT; do
   case ${OPT} in
-    p) PARTIAL=1;;
+    f) FUNCTION="numpy.logical_and";;
     h) help 0;;
   esac
 done
@@ -47,40 +47,14 @@ if [ ! -d ${3} ]; then
 
 fi
 
-RAND=$(shuf -i 0-1000 -n 1)
+TEMP1=$(printf "%s/image_mask_%s.tif" ${TMP} $(shuf -i 0-1000 -n 1))
 
-R_LOGICAL_BAND="${TMP}/_R_logical_${RAND}.tif"
-G_LOGICAL_BAND="${TMP}/_G_logical_${RAND}.tif"
-B_LOGICAL_BAND="${TMP}/_B_logical_${RAND}.tif"
-
-gdal_calc.py -A ${1} --A_band=1 --calc="A!=${2}" --NoDataValue=-1 --type=Byte \
-                                --outfile=${R_LOGICAL_BAND} > /dev/null 2>&1
-
-gdal_calc.py -A ${1} --A_band=2 --calc="A!=${2}" --NoDataValue=-1 --type=Byte \
-                                --outfile=${G_LOGICAL_BAND} > /dev/null 2>&1
-
-gdal_calc.py -A ${1} --A_band=3 --calc="A!=${2}" --NoDataValue=-1 --type=Byte \
-                                --outfile=${B_LOGICAL_BAND} > /dev/null 2>&1
-
-TEMP1="${TMP}/image_mask_${RAND}.tif"
-
-if [ ${PARTIAL} -eq 1 ]; then
-
-  gdal_calc.py -A ${R_LOGICAL_BAND} \
-               -B ${G_LOGICAL_BAND} \
-               -C ${B_LOGICAL_BAND} \
-               --calc="127 * ( ( A + B + C ) == 3 )" --NoDataValue=255 \
-               --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
-
-else
-
-  gdal_calc.py -A ${R_LOGICAL_BAND} \
-               -B ${G_LOGICAL_BAND} \
-               -C ${B_LOGICAL_BAND} \
-               --calc="127 * ( ( A + B + C ) != 0 )" --NoDataValue=255 \
-               --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
-
-fi
+gdal_calc.py -A ${1} --A_band=1 \
+             -B ${1} --B_band=2 \
+             -C ${1} --C_band=3 \
+             --calc="127*${FUNCTION}(${FUNCTION}(A!=${2},B!=${2}),C!=${2})" \
+             --NoDataValue=255 \
+             --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
 
 TEMP2=$(echo ${TEMP1} | sed 's/tif/shp/')
 
@@ -88,8 +62,18 @@ gdal_polygonize.py -q ${TEMP1} -f "ESRI Shapefile" ${TEMP2}
 
 TARGET=${3}"/"$(basename ${1} | cut -d. -f1)".shp"
 
-ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127"
+ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127" -overwrite
 
-rm -f ${R_LOGICAL_BAND} ${G_LOGICAL_BAND} ${B_LOGICAL_BAND} ${TEMP1}
+LAYER=$(basename ${TARGET} .shp)
+
+SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${LAYER})
+
+ogrinfo -q ${TARGET} -sql "${SQL}"
+
+SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
+
+ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
 
 killshape.sh ${TEMP2}
+
+rm -f ${TEMP1}

@@ -28,6 +28,22 @@ gdal_calc.py -A ${1} --calc="127*( A >= 0.0 )" --NoDataValue=255 --type=Byte \
 
 TARGET=${2}"/"$(basename ${1} | cut -d. -f1)".shp"
 
+if [ -e ${TARGET} ]; then
+
+  killshape.sh ${TARGET}
+
+fi
+
 gdal_polygonize.py -q ${TEMP} -f "ESRI Shapefile" ${TARGET}
+
+LAYER=$(basename ${TARGET} .shp)
+
+SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${LAYER})
+
+ogrinfo -q ${TARGET} -sql "${SQL}"
+
+SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
+
+ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
 
 rm -f ${TEMP}
