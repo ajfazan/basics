@@ -4,6 +4,23 @@ import os
 import sys
 import glob
 
+def open_layer( driver, filename, crs ):
+
+  data_set = driver.Open( filename, 0 )
+
+  layer = data_set.GetLayer()
+
+  # assert( layer.GetSpatialRef() == crs )
+
+  n = layer.GetFeatureCount()
+
+  if n > 1:
+    print "Warning: Layer '%s' has %d features" % ( filename, n )
+
+  assert( n == 1 )
+
+  return layer
+
 try:
   from osgeo import ogr, osr
 except:
@@ -54,17 +71,11 @@ for i in range( n - 1 ):
   data_set1 = driver.Open( shapes[i], 0 )
   data_set2 = driver.Open( shapes[j], 0 )
 
-  layer1 = data_set1.GetLayer()
-  layer2 = data_set2.GetLayer()
-
-  assert( layer1.GetFeatureCount() == 1 )
-  assert( layer2.GetFeatureCount() == 1 )
+  layer1 = open_layer( driver, shapes[i], source )
+  layer2 = open_layer( driver, shapes[j], source )
 
   geom1_type = layer1.GetGeomType()
   geom2_type = layer2.GetGeomType()
-
-  #assert( layer1.GetSpatialRef() == source )
-  #assert( layer2.GetSpatialRef() == source )
 
   if ( geom1_type == ogr.wkbPolygon ) and ( geom2_type == ogr.wkbPolygon ):
 

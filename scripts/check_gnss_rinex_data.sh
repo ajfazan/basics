@@ -18,7 +18,9 @@ cd ${1}
 
 STATION=$(basename ${1})
 
-ls *.* > collection.dat
+find \( -iname "*.*O" -or \
+        -iname "*.*N" -or \
+        -iname "*.*G" \) -type f > collection.dat
 
 if [ $(cat collection.dat | wc -l) -ne 3 ]; then
 

@@ -18,38 +18,57 @@ cd ${1}
 
 STATION=$(basename ${1})
 
-ls *.* > collection.dat
+find -mindepth 1 -maxdepth 1 -type d > sessions.dat
 
-if [ $(egrep -i '[O|N|G]$' collection.dat | wc -l) -ne 3 ]; then
+if [ ! -s sessions.dat ]; then
 
-  echo "WARNING: Check GNSS RINEX data files for reference station ${STATION}"
-
-fi
-
-if [ $(egrep -i 'O$' collection.dat | wc -l) -lt 1 ]; then
-
-  echo "Missing GNSS observation data for reference station ${STATION}"
+  echo "." > sessions.dat
 
 fi
 
-if [ $(egrep -i 'N$' collection.dat | wc -l) -lt 1 ]; then
+for DIR in $(cat sessions.dat); do
 
-  echo "Missing GPS navigation data for reference station ${STATION}"
+  find \( -iname "*.pdf" -or \
+          -iname "*.*O" -or \
+          -iname "*.*N" -or \
+          -iname "*.*G" \) -type f > collection.dat
 
-fi
+  COUNT=$(egrep -i '[O|N|G]$' collection.dat | wc -l)
 
-if [ $(egrep -i 'G$' collection.dat | wc -l) -lt 1 ]; then
+  if [ $(echo "${COUNT} % 3" | bc) -ne 0 ]; then
 
-  echo "Missing GLONASS navigation data for reference station ${STATION}"
+    echo "WARNING: Check GNSS RINEX data files for reference station ${STATION}"
 
-fi
+  fi
 
-if [ $(egrep -i 'pdf$' collection.dat | wc -l) -lt 1 ]; then
+  if [ $(egrep -i 'O$' collection.dat | wc -l) -lt 1 ]; then
 
-  echo "Missing PPP processing report for reference station ${STATION}"
+    echo "Missing GNSS observation data for reference station ${STATION}"
 
-fi
+  fi
 
-rm -f collection.dat
+  if [ $(egrep -i 'N$' collection.dat | wc -l) -lt 1 ]; then
+
+    echo "Missing GPS navigation data for reference station ${STATION}"
+
+  fi
+
+  if [ $(egrep -i 'G$' collection.dat | wc -l) -lt 1 ]; then
+
+    echo "Missing GLONASS navigation data for reference station ${STATION}"
+
+  fi
+
+  if [ $(egrep -i 'pdf$' collection.dat | wc -l) -lt 1 ]; then
+
+    echo "Missing PPP processing report for reference station ${STATION}"
+
+  fi
+
+  rm -f collection.dat
+
+done
+
+rm -f sessions.dat
 
 cd - 1>/dev/null

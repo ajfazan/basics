@@ -45,7 +45,7 @@ for DIR in $(find ./ -mindepth 1 -maxdepth 1 -type d); do
 
     echo -n "WARNING: "
     echo -n "Number of photographs for $(basename ${DIR}) is less than expected"
-    echo " >> (${COUNT} < 5)"
+    echo " >> (${COUNT} < ${2})"
 
   fi
 

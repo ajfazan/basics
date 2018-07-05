@@ -14,7 +14,7 @@ function create_geo_grid( northern_lat,
   for i = 1 : columns( lat )
     l = lat( i );
     for j = 1 : columns( lon )
-      fprintf( stream, '%.12f %.12f\n', l, lon( j ) );
+      fprintf( stream, '%.12f|%.12f\n', l, lon( j ) );
     endfor
   endfor
 
