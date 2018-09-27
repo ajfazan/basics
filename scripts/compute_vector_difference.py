@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from osgeo import ogr, osr
-
 import os, sys
 
 def openDataSource( filename ):
@@ -16,12 +15,10 @@ def openDataSource( filename ):
 
   return ds
 
-
 def printGeometryInfo( g ):
 
   print "Geometry name:", g.GetGeometryName()
   print "Geometry count:", g.GetGeometryCount()
-
 
 def main( argv ):
 
@@ -30,9 +27,6 @@ def main( argv ):
 
   l1 = ds1.GetLayer()
   l2 = ds2.GetLayer()
-
-  # print "Feature Count: ", l1.GetFeatureCount()
-  # print "Feature Count: ", l2.GetFeatureCount()
 
   sr1 = l1.GetSpatialRef()
   sr2 = l2.GetSpatialRef()

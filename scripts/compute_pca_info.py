@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 from osgeo import gdal
-
 import numpy as np
-
 import math, os, sys
 
 gdal.UseExceptions()
@@ -22,56 +20,49 @@ def computePCA( img ):
 
   n = img.RasterCount
 
-  corr = np.zeros( ( n, n ), dtype = np.float64 )
+  sigma = np.zeros( ( n, n ), dtype = np.float64 )
 
-  bands = []
-
-  nodata = []
-  pixels = []
+  bands = []; pixels = []
 
   for k in range( 1, n + 1 ):
 
     band = img.GetRasterBand( k )
-    nodata.append( band.GetNoDataValue() )
     array = np.array( band.ReadAsArray(), dtype = np.float64 )
 
-    logical = ( array != nodata[-1] )
-
-    array[array == nodata[-1]] = 0.0
+    null = band.GetNoDataValue()
+    logical = ( array != null )
     count = logical.sum()
     assert( count != 0.0 )
 
+    array[array == null] = 0.0
     mean = array.sum() / count
     array[logical] -= mean
     array /= ( count - 1.0 )
 
-    bands.append( array )
+    bands.append( array ); pixels.append( count )
 
-    pixels.append( count )
-
-  assert( np.std( pixels ) == 0.0 );
-  assert( np.std( nodata ) == 0.0 );
+  pixels = np.unique( pixels )
+  assert( pixels.size == 1 )
 
   for i in range( n ):
     x = bands[i]
-    corr[i,i] = np.sum( x * x, dtype = np.float64 )
+    sigma[i,i] = np.sum( x * x, dtype = np.float64 )
     for j in range( i + 1, n ):
-
       y = bands[j]
-      corr[j,j] = np.sum( y * y )
-      corr[i,j] = np.sum( x * y )
+      sigma[i,j] = np.sum( x * y, dtype = np.float64 )
+
+  corr = np.identify( n )
 
   for i in range( n ):
-    v = corr[i,i]
-    corr[i,i] = 1.0
+    cxx = sigma[i,i]
     for j in range( i + 1, n ):
-      corr[i,j] /= v
+      cyy = sigma[j,j]
+      corr[i,j] = sigma[i,j] / math.sqrt( cxx * cyy )
       corr[j,i] = corr[i,j]
 
   w, v = np.linalg.eigh( corr )
 
   return w, v, corr
-
 
 def main( argv ):
 
@@ -79,13 +70,12 @@ def main( argv ):
 
   w, v, corr = computePCA( h )
 
-  w = abs( w )
+  w /= w.sum()
 
-  n = w.size
-  s = w.sum()
+  k = 0
 
-  for k in range( n ):
-    print "PC%d Percent Info: %f" % ( k + 1, w[n-k-1] / s )
+  for p in w[::-1]:
+    print "PC%d Percent Info: %f" % ( k += 1, p )
 
   return 0
 
