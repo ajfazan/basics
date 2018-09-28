@@ -31,16 +31,10 @@ def openImage( filename ):
 def main( argv ):
 
   out = argv[0]
+
   nodata = float( argv[1] )
 
-  channels = []
-
-  pixels = []
-
-  transforms = []
-  projections = []
-
-  ntypes = []
+  channels = []; pixels = []; transforms = []; projections = []; ntypes = []
 
   for f in argv[2:]:
     img = openImage( f )
@@ -75,7 +69,8 @@ def main( argv ):
 
     ( ulx, uly, xsize, ysize ) = ( transforms[0][0], \
                                    transforms[0][3], \
-                                   transforms[0][1], transforms[0][5] )
+                                   transforms[0][1], \
+                                   transforms[0][5]  )
 
     driver = gdal.GetDriverByName( 'GTiff' )
     opts = [ "TILED=YES", "COMPRESS=LZW" ]
