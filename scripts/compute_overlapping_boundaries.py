@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import glob
+import glob, os, sys
 
 def open_layer( driver, filename, crs ):
 

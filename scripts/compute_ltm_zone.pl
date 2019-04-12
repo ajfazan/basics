@@ -37,13 +37,13 @@ if( $argc == 1 ) {
   $longitude = $factor2 * ( $factor1 + $lon_mm / 60.0 + $lon_ss / 3600.0 );
 }
 
-$zone = floor( ( $longitude + 180 ) / 6 ) % 60 + 1;
+$zone = floor( $longitude + 180 ) % 360 + 1;
 
 if( $rem ) {
 
-  print sprintf( "UTM Zone: %02d\n", $zone );
+  print sprintf( "LTM Zone: %02d\n", $zone );
 
 } else {
 
-  print sprintf( "Point: %s | UTM Zone: %02d\n", $point, $zone );
+  print sprintf( "Point: %s | LTM Zone: %02d\n", $point, $zone );
 }

@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 
-import os
-import sys
+import os, sys
 
 try:
   from osgeo import ogr
-
 except:
   print sys.stderr, "OGR module not found... Exiting"
   sys.exit( 1 )

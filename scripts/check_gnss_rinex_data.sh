@@ -1,5 +1,7 @@
 #!/bin/sh
 
+IFS=$'\n'
+
 if [ ${#} -ne 1 ]; then
 
   echo -e "\nUsage:\n\t$(basename ${0}) <RINEX_DATA_DIR>"

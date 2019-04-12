@@ -47,7 +47,10 @@ if [ ! -d ${3} ]; then
 
 fi
 
-TEMP1=$(printf "%s/image_mask_%s.tif" ${TMP} $(shuf -i 0-1000 -n 1))
+TAG=$(printf "image_mask_%d" $(shuf -i 0-1000 -n 1))
+
+TEMP1="${TMP}/${TAG}.tif"
+TEMP2="${TMP}/${TAG}.shp"
 
 gdal_calc.py -A ${1} --A_band=1 \
              -B ${1} --B_band=2 \
@@ -55,8 +58,6 @@ gdal_calc.py -A ${1} --A_band=1 \
              --calc="127*${FUNCTION}(${FUNCTION}(A!=${2},B!=${2}),C!=${2})" \
              --NoDataValue=255 \
              --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
-
-TEMP2=$(echo ${TEMP1} | sed 's/tif/shp/')
 
 gdal_polygonize.py -q ${TEMP1} -f "ESRI Shapefile" ${TEMP2}
 
@@ -74,6 +75,4 @@ SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
 
 ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
 
-killshape.sh ${TEMP2}
-
-rm -f ${TEMP1}
+find ${TMP} -name "${TAG}.*" -type f -delete

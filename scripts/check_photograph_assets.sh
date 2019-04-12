@@ -9,6 +9,8 @@ fi
 
 FILE=${TMP}"/point_list_"$(shuf -i 0-1000 -n 1)".tmp"
 
+IFS=$'\n'
+
 find ./ -mindepth 1 -maxdepth 1 -type d -exec basename {} \; > ${FILE}
 
 if [ $(cat ${FILE} | wc -l) -ne ${1} ]; then

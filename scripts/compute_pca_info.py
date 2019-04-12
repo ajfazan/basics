@@ -4,8 +4,6 @@ from osgeo import gdal, osr
 import numpy as np
 import math, os, sys
 
-gdal.UseExceptions()
-
 def openImage( filename ):
 
   handle = gdal.Open( filename )
@@ -27,6 +25,7 @@ def computePCA( img ):
   for k in range( 1, n + 1 ):
 
     band = img.GetRasterBand( k )
+
     array = np.array( band.ReadAsArray(), dtype = np.float64 )
 
     null = band.GetNoDataValue()
@@ -34,8 +33,8 @@ def computePCA( img ):
     count = logical.sum()
     assert( count != 0.0 )
 
-    array[array == null] = 0.0
-    mean = array.sum() / count
+    array[array == null] = np.nan
+    mean = np.nansum( array ) / count
     array[logical] -= mean
 
     bands.append( array ); pixels.append( count )
@@ -48,17 +47,15 @@ def computePCA( img ):
 
   for i in range( n ):
     x = bands[i]
-    sigma[i,i] = np.sum( x * x, dtype = np.float64 ) / df
+    sigma[i,i] = np.nansum( x * x, dtype = np.float64 ) / df
     m += 1
     for j in range( i + 1, n ):
       y = bands[j]
-      sigma[i,j] = np.sum( x * y, dtype = np.float64 ) / df
+      sigma[i,j] = np.nansum( x * y, dtype = np.float64 ) / df
       sigma[j,i] = sigma[i,j]
       m += 2
 
   assert( m == ( n * n ) )
-
-  print sigma
 
   corr = np.identity( n )
 
@@ -71,19 +68,22 @@ def computePCA( img ):
 
   w, v = np.linalg.eigh( corr )
 
+  print "\nCORRELATION =\n"
   print corr
 
   return w, v, corr
 
-def transformImage( img, v, filename, outdir = "" ):
+def transformImage( img, v, args ):
 
   n = img.RasterCount
 
   ( cols, rows ) = ( img.RasterXSize, img.RasterYSize )
 
-  bands = []
-
   mask = np.ones( ( rows, cols ) )
+
+  pixels = cols * rows
+
+  bands = np.empty( ( 1, pixels ) )
 
   for k in range( 1, n + 1 ):
 
@@ -91,15 +91,19 @@ def transformImage( img, v, filename, outdir = "" ):
     array = np.array( band.ReadAsArray(), dtype = np.float64 )
 
     null = band.GetNoDataValue()
-    array[array == null] = 0.0
+
     mask = np.logical_and( mask, array != null )
 
-    bands.append( array.flatten() )
+    bands = np.vstack( ( bands, np.reshape( array, ( 1, pixels ) ) ) )
 
-  bands = np.stack( bands, axis = 0 )
-  pc = np.matmul( v.T, bands )
+  bands = np.delete( bands, 0, 0 )
 
-  filename = os.path.splitext( os.path.basename( filename ) )
+  pc = np.matmul( v, bands )
+
+  print v
+  print v.T
+
+  filename = os.path.splitext( os.path.basename( args[0] ) )
 
   driver = gdal.GetDriverByName( 'GTiff' )
   opts = [ "TILED=YES", "COMPRESS=LZW" ]
@@ -107,10 +111,16 @@ def transformImage( img, v, filename, outdir = "" ):
   raster_srs = osr.SpatialReference()
   raster_srs.ImportFromWkt( img.GetProjectionRef() )
 
-  for k in range( n ):
-    out = outdir + os.sep + filename[0] + "_PC" + str( k + 1 ) + filename[1]
+  idx = n - 1
 
-    b = normalizeChannel( np.reshape( pc[n-1-k,:], ( rows, cols ) ), mask, 1, 255 )
+  if len( args ) == 3:
+    n = int( args[2] )
+
+  for k in range( n ):
+
+    out = args[1] + os.sep + filename[0] + "_PC" + str( k + 1 ) + filename[1]
+
+    b = normalizeChannel( np.reshape( pc[idx,:], ( rows, cols ) ), mask, 1, 255 )
 
     raster = driver.Create( out, cols, rows, 1, gdal.GDT_Byte, options=opts )
     raster.SetGeoTransform( img.GetGeoTransform() )
@@ -120,6 +130,8 @@ def transformImage( img, v, filename, outdir = "" ):
     band.WriteArray( b )
     band.SetNoDataValue( 0 )
     band.FlushCache()
+
+    idx -= 1
 
   return 0
 
@@ -140,6 +152,8 @@ def normalizeChannel( band, mask, nd_min, nd_max, integer = True ):
 
 def main( argv ):
 
+  gdal.UseExceptions()
+
   h = openImage( argv[0] )
 
   w, v, corr = computePCA( h )
@@ -148,14 +162,14 @@ def main( argv ):
 
   k = 1
 
+  print "\n"
+
   for p in w[::-1]:
     print "PC%d Percent Info: %f" % ( k, p )
     k += 1
 
-  print "S/N: ", np.sum( w[1:] ) / w[0]
-
-  if len( argv ) == 2:
-    transformImage( h, v, argv[0], argv[1] )
+  if len( argv ) >= 2:
+    transformImage( h, v, argv )
 
   return 0
 
@@ -163,9 +177,9 @@ if __name__ == "__main__":
 
   count = len( sys.argv )
 
-  if ( count != 2 ) and ( count != 3 ):
+  if not count in range( 2, 5 ):
     print "Usage:"
-    print "\t%s <IMAGE> [<OUT_DIR>]" % os.path.basename( sys.argv[0] )
+    print "\t%s <IMAGE> [<OUT_DIR> [<COUNT>]]" % os.path.basename( sys.argv[0] )
     sys.exit( -1 )
 
   main( sys.argv[1:] )
