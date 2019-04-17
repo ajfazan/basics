@@ -6,13 +6,33 @@ from tempfile import gettempdir
 import numpy as np
 import argparse, math, os, sys
 
-def openImage( filename ):
+def isFile( p ):
+
+  if not os.path.isfile( p ):
+    raise argparse.ArgumentTypeError( "{0} is not a regular file".format( p ) )
+  return p
+
+def isDir( p ):
+
+  if not os.path.isdir( p ):
+    raise argparse.ArgumentTypeError( "{0} is not a directory".format( p ) )
+  return p
+
+def openRaster( filename ):
 
   handle = gdal.Open( filename )
 
   if handle is None:
-    print "Unable to open image %s" % filename
-    sys.exit( 1 )
+    sys.exit( 'Exception: Unable to open raster dataset {}'.format( filename ) )
+
+  has_nodata = True
+  for k in range( 1, 1 + handle.RasterCount ):
+    band = handle.GetRasterBand( k )
+    nodata = band.GetNoDataValue()
+    has_nodata = ( has_nodata and ( not nodata is None ) )
+
+  if not has_nodata:
+    sys.exit( 'Exception: Raster dataset {} has no defined nodata value'.format( filename ) )
 
   return handle
 
@@ -72,7 +92,7 @@ def main( args ):
 
   gdal.UseExceptions()
 
-  dem = openImage( args.filename )
+  dem = openRaster( args.filename )
 
   n = dem.RasterCount
   assert( n == 1 )
@@ -97,19 +117,19 @@ def main( args ):
   tmp.append( tmp[0] )
   tmp.append( tmp[0] )
 
-  tmp[0] += ".f.tif"
-  tmp[1] += ".m.tif"
-  tmp[2] += ".a.shp"
+  tmp[0] += ".tif"
+  tmp[1] += ".mask.tif"
+  tmp[2] += ".shp"
 
   crs = dem.GetProjectionRef()
   geo = dem.GetGeoTransform()
 
   createTempRaster( tmp[0], crs, geo, filtered * ( array != band.GetNoDataValue() ) )
-  img0 = openImage( tmp[0] )
+  img0 = openRaster( tmp[0] )
   band = img0.GetRasterBand( 1 )
 
   createTempRaster( tmp[1], crs, geo, band.ReadAsArray() != band.GetNoDataValue() )
-  img1 = openImage( tmp[1] )
+  img1 = openRaster( tmp[1] )
   mask = img1.GetRasterBand( 1 )
 
   crs = osr.SpatialReference()
@@ -152,10 +172,18 @@ def main( args ):
       layer2.CreateFeature( feature2 )
       fid += 1
 
+  count = layer2.GetFeatureCount()
+
+  if not args.quiet:
+    print "%d/%d features before/after cleanup process" % ( layer1.GetFeatureCount(), count )
+
   ds.Destroy()
   driver.DeleteDataSource( tmp[2] )
 
   result.Destroy()
+
+  if count == 0 and args.purge:
+    driver.DeleteDaSource( output )
 
   img0 = None
   img1 = None
@@ -184,16 +212,13 @@ if __name__ == "__main__":
   parser.add_argument( '--cutoff', nargs = '?', type = float, dest = 'cutoff', default = 0.05,
     help = 'specifies a threshold to threshold the filtered DEM [default = 0.05]' )
 
-  parser.add_argument( 'filename' )
-  parser.add_argument( 'outdir' )
+  parser.add_argument( '--quiet', action = 'store_true', help = 'suppress progress messages' )
+
+  parser.add_argument( '--purge', action = 'store_true', help = 'remove an empty resulting dataset')
+
+  parser.add_argument( 'filename', type=isFile )
+  parser.add_argument( 'outdir', type=isDir )
 
   args = parser.parse_args()
-
-  # print args.radius
-  # print args.sigma
-  # print args.area
-  # print args.cutoff
-  # print args.filename
-  # print args.outdir
 
   main( args )

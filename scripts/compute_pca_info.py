@@ -2,27 +2,52 @@
 
 from osgeo import gdal, osr
 import numpy as np
-import math, os, sys
+import argparse, math, os, sys
 
-def openImage( filename ):
+def isFile( p ):
+
+  if not os.path.isfile( p ):
+    raise argparse.ArgumentTypeError( "{0} is not a regular file".format( p ) )
+  return p
+
+def isDir( p ):
+
+  if not os.path.isdir( p ):
+    raise argparse.ArgumentTypeError( "{0} is not a directory".format( p ) )
+  return p
+
+def openRaster( filename ):
 
   handle = gdal.Open( filename )
 
   if handle is None:
-    print "Unable to open image %s" % filename
-    sys.exit( 1 )
+    sys.exit( 'Exception: Unable to open raster dataset {}'.format( filename ) )
+
+  has_nodata = True
+  for k in range( 1, 1 + handle.RasterCount ):
+    band = handle.GetRasterBand( k )
+    nodata = band.GetNoDataValue()
+    has_nodata = ( has_nodata and ( not nodata is None ) )
+
+  if not has_nodata:
+    sys.exit( 'Exception: Raster dataset {} has no defined nodata value'.format( filename ) )
 
   return handle
 
-def computePCA( img ):
+def computePCA( img, args ):
 
-  n = img.RasterCount
+  if args.bands is None:
+    n = img.RasterCount
+    bands = list( range( 1, 1 + n ) )
+  else:
+    bands = args.bands
+    n = len( bands )
 
   sigma = np.zeros( ( n, n ), dtype = np.float64 )
 
-  bands = []; pixels = []
+  channels = []; pixels = []
 
-  for k in range( 1, n + 1 ):
+  for k in bands:
 
     band = img.GetRasterBand( k )
 
@@ -37,7 +62,7 @@ def computePCA( img ):
     mean = np.nansum( array ) / count
     array[logical] -= mean
 
-    bands.append( array ); pixels.append( count )
+    channels.append( array ); pixels.append( count )
 
   pixels = np.unique( pixels )
   assert( pixels.size == 1 )
@@ -46,64 +71,84 @@ def computePCA( img ):
   m = 0
 
   for i in range( n ):
-    x = bands[i]
+    x = channels[i]
     sigma[i,i] = np.nansum( x * x, dtype = np.float64 ) / df
     m += 1
     for j in range( i + 1, n ):
-      y = bands[j]
+      y = channels[j]
       sigma[i,j] = np.nansum( x * y, dtype = np.float64 ) / df
       sigma[j,i] = sigma[i,j]
       m += 2
 
   assert( m == ( n * n ) )
 
-  corr = np.identity( n )
+  if args.matrix == 'correlation':
 
-  for i in range( n ):
-    cxx = sigma[i,i]
-    for j in range( i + 1, n ):
-      cyy = sigma[j,j]
-      corr[i,j] = sigma[i,j] / math.sqrt( cxx * cyy )
-      corr[j,i] = corr[i,j]
+    corr = np.identity( n )
 
-  w, v = np.linalg.eigh( corr )
+    for i in range( n ):
+      cxx = sigma[i,i]
+      for j in range( i + 1, n ):
+        cyy = sigma[j,j]
+        corr[i,j] = sigma[i,j] / math.sqrt( cxx * cyy )
+        corr[j,i] = corr[i,j]
 
-  print "\nCORRELATION =\n"
-  print corr
+    w, v = np.linalg.eigh( corr )
+    print "\nCORRELATION MATRIX =\n"
+    print corr
 
-  return w, v, corr
+  else:
+
+    w, v = np.linalg.eigh( sigma )
+    print "\nCOVARIANCE MATRIX =\n"
+    print sigma
+
+  w /= w.sum()
+
+  k = 1
+
+  print "\n"
+
+  for p in w[::-1]:
+    print "PC%d Percent Info: %f" % ( k, p )
+    k += 1
+
+  return v
 
 def transformImage( img, v, args ):
 
-  n = img.RasterCount
+  if args.bands is None:
+    n = img.RasterCount
+    bands = list( range( 1, 1 + n ) )
+  else:
+    bands = args.bands
+    n = len( bands )
 
   ( cols, rows ) = ( img.RasterXSize, img.RasterYSize )
 
-  mask = np.ones( ( rows, cols ) )
+  back = np.ones( ( rows, cols ) )
 
   pixels = cols * rows
 
-  bands = np.empty( ( 1, pixels ) )
+  channels = np.empty( ( 1, pixels ) )
 
-  for k in range( 1, n + 1 ):
+  for k in bands:
 
     band = img.GetRasterBand( k )
     array = np.array( band.ReadAsArray(), dtype = np.float64 )
 
     null = band.GetNoDataValue()
+    array[array == null] = np.nan
 
-    mask = np.logical_and( mask, array != null )
+    back = np.logical_and( back, np.isnan( array ) )
 
-    bands = np.vstack( ( bands, np.reshape( array, ( 1, pixels ) ) ) )
+    channels = np.vstack( ( channels, np.reshape( array, ( 1, pixels ) ) ) )
 
-  bands = np.delete( bands, 0, 0 )
+  channels = np.delete( channels, 0, 0 )
 
-  pc = np.matmul( v, bands )
+  pc = np.matmul( v, channels )
 
-  print v
-  print v.T
-
-  filename = os.path.splitext( os.path.basename( args[0] ) )
+  filename = os.path.splitext( os.path.basename( args.filename ) )
 
   driver = gdal.GetDriverByName( 'GTiff' )
   opts = [ "TILED=YES", "COMPRESS=LZW" ]
@@ -113,14 +158,14 @@ def transformImage( img, v, args ):
 
   idx = n - 1
 
-  if len( args ) == 3:
-    n = int( args[2] )
+  if not args.count is None:
+    n = min( n, args.count )
 
   for k in range( n ):
 
-    out = args[1] + os.sep + filename[0] + "_PC" + str( k + 1 ) + filename[1]
+    out = args.outdir + os.sep + filename[0] + "_PC" + str( k + 1 ) + filename[1]
 
-    b = normalizeChannel( np.reshape( pc[idx,:], ( rows, cols ) ), mask, 1, 255 )
+    b = normalizeChannel( np.reshape( pc[idx,:], ( rows, cols ) ), back, 1, 255 )
 
     raster = driver.Create( out, cols, rows, 1, gdal.GDT_Byte, options=opts )
     raster.SetGeoTransform( img.GetGeoTransform() )
@@ -135,51 +180,55 @@ def transformImage( img, v, args ):
 
   return 0
 
-def normalizeChannel( band, mask, nd_min, nd_max, integer = True ):
+def normalizeChannel( band, back, nd_min, nd_max, integer = True ):
 
-  g_min = np.nanmin( band[mask] )
-  g_max = np.nanmax( band[mask] )
+  g_min = np.nanmin( band )
+  g_max = np.nanmax( band )
 
   kappa = ( nd_max - nd_min ) / ( g_max - g_min )
 
-  band[mask] *= kappa
-  band[mask] += ( nd_min - kappa * g_min )
+  band *= kappa
+  band += ( nd_min - kappa * g_min )
+
+  band[back] = 0
 
   if integer:
     return band.round()
 
   return band
 
-def main( argv ):
+def main( args ):
 
   gdal.UseExceptions()
 
-  h = openImage( argv[0] )
+  h = openRaster( args.filename )
 
-  w, v, corr = computePCA( h )
+  v = computePCA( h, args )
 
-  w /= w.sum()
-
-  k = 1
-
-  print "\n"
-
-  for p in w[::-1]:
-    print "PC%d Percent Info: %f" % ( k, p )
-    k += 1
-
-  if len( argv ) >= 2:
-    transformImage( h, v, argv )
+  if not args.outdir is None:
+    transformImage( h, v, args )
 
   return 0
 
 if __name__ == "__main__":
 
-  count = len( sys.argv )
+  parser = argparse.ArgumentParser()
 
-  if not count in range( 2, 5 ):
-    print "Usage:"
-    print "\t%s <IMAGE> [<OUT_DIR> [<COUNT>]]" % os.path.basename( sys.argv[0] )
-    sys.exit( -1 )
+  parser.add_argument( '--matrix', nargs = '?', type = str, default = 'correlation',
+    help = 'specifies whether covariance or correlation matrix must be used to produce the \
+            resulting PC [default = correlation]' )
 
-  main( sys.argv[1:] )
+  parser.add_argument( '--outdir', nargs = '?', type = isDir,
+    help = 'specifies the output directory to write the PC raster files' )
+
+  parser.add_argument( '--bands', nargs = '+', type = int,
+    help = 'specifies the image bands to compute the PC' )
+
+  parser.add_argument( '--count', nargs = '?', type = int,
+    help = 'specifies the number of resulting PC to be written to OUTDIR' )
+
+  parser.add_argument( 'filename', type=isFile )
+
+  args = parser.parse_args()
+
+  main( args )
