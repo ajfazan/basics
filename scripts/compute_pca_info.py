@@ -45,7 +45,10 @@ def computePCA( img, args ):
 
   sigma = np.zeros( ( n, n ), dtype = np.float64 )
 
-  channels = []; pixels = []
+  channels = []
+  valid = []
+
+  back = np.ones( ( img.RasterYSize, img.RasterXSize ) )
 
   for k in bands:
 
@@ -53,21 +56,30 @@ def computePCA( img, args ):
 
     array = np.array( band.ReadAsArray(), dtype = np.float64 )
 
-    null = band.GetNoDataValue()
-    logical = ( array != null )
-    count = logical.sum()
-    assert( count != 0.0 )
+    mask = ( array != band.GetNoDataValue() )
 
-    array[array == null] = np.nan
-    mean = np.nansum( array ) / count
-    array[logical] -= mean
+    valid.append( mask.sum() )
 
-    channels.append( array ); pixels.append( count )
+    back = np.logical_and( back, mask )
 
-  pixels = np.unique( pixels )
-  assert( pixels.size == 1 )
+    channels.append( array )
 
-  df = pixels[0] - 1.0
+  valid = np.unique( valid )
+  if valid.size != 1:
+    print sys.stderr, valid
+    print sys.stderr, "[WARNING]: Background is not uniform for image", args.filename
+
+  pixels = back.sum()
+
+  back = np.logical_not( back )
+
+  for array in channels:
+
+    array[back] = np.nan
+    mean = np.nansum( array ) / pixels
+    array -= mean
+
+  df = pixels - 1.0
   m = 0
 
   for i in range( n ):
@@ -107,7 +119,7 @@ def computePCA( img, args ):
 
   k = 1
 
-  print "\n"
+  print ""
 
   for p in w[::-1]:
     print "PC%d Percent Info: %f" % ( k, p )
@@ -146,7 +158,7 @@ def transformImage( img, v, args ):
 
   channels = np.delete( channels, 0, 0 )
 
-  pc = np.matmul( v, channels )
+  pc = np.matmul( v.T, channels )
 
   filename = os.path.splitext( os.path.basename( args.filename ) )
 

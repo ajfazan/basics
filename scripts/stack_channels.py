@@ -4,7 +4,7 @@ from osgeo import gdal, osr
 
 import numpy as np
 
-import math, os, sys
+import argparse, math, os, sys
 
 gdal.UseExceptions()
 
@@ -28,15 +28,11 @@ def openImage( filename ):
 
   return handle
 
-def main( argv ):
-
-  out = argv[0]
-
-  nodata = float( argv[1] )
+def main( args ):
 
   channels = []; pixels = []; transforms = []; projections = []; ntypes = []
 
-  for f in argv[2:]:
+  for f in args.files:
     img = openImage( f )
     assert( img.RasterCount == 1 ) # image must be single-band
     band = img.GetRasterBand( 1 )
@@ -54,18 +50,30 @@ def main( argv ):
   ntypes = unique( ntypes )
   pixels = unique( pixels )
 
+  assert( len( ntypes ) == 1 )
+  assert( len( pixels ) == 1 )
+
+  if( len( args.values ) ):
+
+    ( cols, rows ) = ( pixels[0][0], pixels[0][1] )
+    mask = np.ones( ( rows, cols ) )
+
+    for v in args.values:
+      for band in channels:
+        mask = np.logical_and( mask, band != v )
+
+    back = np.logical_not( mask )
+
+    for k in range( len( channels ) ):
+      channels[k] *= mask
+      channels[k][back] = args.nodata
+
   transforms = unique( transforms )
   projections = unique( projections )
 
-  if ( len( ntypes ) == 1 ) and \
-     ( len( pixels ) == 1 ) and ( len( transforms ) == 1 ) and ( len( projections ) == 1 ):
+  if ( ( len( transforms ) == 1 ) and ( len( projections ) == 1 ) ):
 
     ( cols, rows ) = ( pixels[0][0], pixels[0][1] )
-    m = np.ones( ( rows, cols ) )
-    r = range( len( channels ) )
-
-    for k in r:
-      m *= ( channels[k] != nodata )
 
     ( ulx, uly, xsize, ysize ) = ( transforms[0][0], \
                                    transforms[0][3], \
@@ -73,15 +81,14 @@ def main( argv ):
                                    transforms[0][5]  )
 
     driver = gdal.GetDriverByName( 'GTiff' )
-    opts = [ "TILED=YES", "COMPRESS=LZW" ]
-    outRaster = driver.Create( out, cols, rows, len( r ), ntypes[0], options=opts )
+    opts = [ "TILED=YES", "COMPRESS=LZW", "TFW=YES" ]
+    outRaster = driver.Create( args.outfile, cols, rows, len( channels ), ntypes[0], options=opts )
     outRaster.SetGeoTransform( ( ulx, xsize, 0, uly, 0, ysize ) )
 
-    for k in r:
-      channels[k] *= m
+    for k in range( len( channels ) ):
       outband = outRaster.GetRasterBand( k + 1 )
       outband.WriteArray( channels[k] )
-      outband.SetNoDataValue( nodata )
+      outband.SetNoDataValue( args.nodata )
       outband.FlushCache()
 
     outRasterSRS = osr.SpatialReference()
@@ -97,9 +104,23 @@ def main( argv ):
 
 if __name__ == "__main__":
 
-  if len( sys.argv ) < 4:
-    print "Usage:"
-    print "\t%s <OUT> <NODATA> <IMG1> <IMG2> [<IMG3>] ..." % os.path.basename( sys.argv[0] )
-    sys.exit( -1 )
+  parser = argparse.ArgumentParser()
 
-  main( sys.argv[1:] )
+  parser.add_argument( '--outfile', type = str, dest = 'outfile',
+    help = 'specifies the output filename for the resulting raster file' )
+
+  parser.add_argument( '--nodata', nargs = '?', type = float, dest = 'nodata', default = 0.0,
+    help = 'specifies a background value for the resulting raster file [default = 0.0]' )
+
+  parser.add_argument( '--set-nodata', nargs = '+', type = float, dest = 'values',
+    help = 'specifies one or more gray values to be replaced by nodata values' )
+
+  parser.add_argument( 'files', nargs = '+', type = str )
+
+  if len( sys.argv ) == 1:
+    parser.print_usage()
+    sys.exit( 0 )
+
+  args = parser.parse_args()
+
+  main( args )

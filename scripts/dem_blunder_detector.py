@@ -55,38 +55,23 @@ def createLOGFilter( radius, sigma ):
 
   n = 2 * radius + 1
 
-  # ~ f = np.zeros( ( n, n ) )
+  g = np.zeros( ( n, n ) )
 
-  # ~ domain = range( n )
+  k1 = 2.0 * sigma ** 2
+  k2 = math.pi * k1
 
-  # ~ sigma /= 100.0
-  # ~ sigma *= radius
-  # ~ var = sigma ** 2
-  # ~ k = -1.0 / ( math.pi * var * var )
-  # ~ var *= 2.0
+  domain = range( n )
 
-  # ~ for y in domain:
-    # ~ for x in domain:
-      # ~ alpha = ( ( x - radius ) ** 2 + ( y - radius ) ** 2 ) / var
-      # ~ f[y,x] = k * ( 1.0 - alpha ) * math.exp( -alpha )
+  for y in domain:
+    for x in domain:
+      alpha = ( ( x - radius ) ** 2 + ( y - radius ) ** 2 ) / k1
+      g[y, x] = math.exp( -alpha ) / k2
 
-  # ~ f = np.zeros( ( 1, n ) )
+  l = -np.ones( ( 3,3 ), dtype = float )
 
-  # ~ for k in range( radius ):
-    # ~ f[0, k] = -( 1 + k )
-    # ~ f[0, n - k - 1] = f[0, k]
+  l[1, 1] = 8.0
 
-  # ~ f[0, radius] = abs( np.sum( f ) )
-
-  # ~ f = np.matmul( np.transpose( f ), f )
-
-  # ~ f *= ( sigma / np.std( f ) )
-
-  f = -np.ones( ( 3,3 ), dtype = float )
-
-  f[1, 1] = 8.0
-
-  return f
+  return g, l
 
 def main( args ):
 
@@ -97,14 +82,18 @@ def main( args ):
   n = dem.RasterCount
   assert( n == 1 )
 
-  log = createLOGFilter( args.radius, args.sigma )
+  g, l = createLOGFilter( args.radius, args.sigma )
 
   band = dem.GetRasterBand( 1 )
   null = band.GetNoDataValue()
 
   array = np.array( band.ReadAsArray(), dtype = np.float64 )
 
-  filtered = convolve2d( array, log, boundary = 'symm', mode = 'same' )
+  ## apply Gaussian filter
+  filtered = convolve2d( array, g, boundary = 'symm', mode = 'same' )
+
+  ## apply Laplacian filter
+  filtered = convolve2d( filtered, l, boundary = 'symm', mode = 'same' )
 
   filtered *= np.logical_and( filtered >= -25.0, filtered <= 25.0 )
 
@@ -197,14 +186,11 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
 
-  parser.add_argument( '--radius', nargs = '?', type = int  , dest = 'radius', default = 3,
-    help = 'specifies a radius for the Laplace filter [default = 3]' )
-
-  # parser.add_argument( '--sigma' , nargs = '?', type = float, dest = 'sigma' , default = 50.0,
-  #   help = 'specifies a sigma value for the Laplace filter as a % of the radius [default = 50]' )
+  parser.add_argument( '--radius', nargs = '?', type = int  , dest = 'radius', default = 2,
+    help = 'specifies a radius for the Gaussian filter [default = 2]' )
 
   parser.add_argument( '--sigma' , nargs = '?', type = float, dest = 'sigma' , default = 1.0,
-    help = 'specifies a sigma value for the Laplace filter [default = 1.0]' )
+    help = 'specifies a sigma value for the Gaussian filter [default = 1.0]' )
 
   parser.add_argument( '--area', nargs = '?', type = int, dest = 'area', default = 50,
     help = 'specifies an area threshold (in pixels) to keep extracted features [default = 50]' )

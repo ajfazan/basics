@@ -59,8 +59,8 @@ gdal_calc.py -A ${1} --A_band=1 \
              -B ${1} --B_band=2 \
              -C ${1} --C_band=3 \
              -D ${1} --D_band=4 \
-             --calc="127*${LOGICAL}" --NoDataValue=255 --type=Byte \
-             --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
+             --calc="${LOGICAL}" --NoDataValue=0 --type=Byte --format=GTiff \
+             --overwrite --quiet --outfile=${TEMP1}
 
 gdal_polygonize.py -q ${TEMP1} -f "ESRI Shapefile" ${TEMP2}
 
@@ -78,4 +78,4 @@ SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
 
 ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
 
-find ${TMP} -name "${TAG}.*" -type f -delete
+find ${TMP} -maxdepth 1 -name "${TAG}.*" -type f -delete

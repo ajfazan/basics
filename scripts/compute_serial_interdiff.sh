@@ -23,8 +23,8 @@ for FILE in $(find ${1} -name "*.shp" -type f); do
 
   gdal_calc.py -A ${TMP1} --allBands=A \
                -B ${TMP2} --allBands=B \
-               --NoDataValue=255 --outfile=${TARGET} \
-               --calc="numpy.abs( A - B )" --overwrite 2>&1 1>/dev/null
+               --NoDataValue=255 --outfile=${TARGET} --format=GTiff --co=COMPRESS=LZW \
+               --calc="numpy.abs( A - B )" --overwrite --quiet
 
   gdal_edit.py -stats ${TARGET}
 

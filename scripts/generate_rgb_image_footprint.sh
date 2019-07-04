@@ -7,11 +7,8 @@ function help {
   exit ${1}
 }
 
-FUNCTION="numpy.logical_or"
-
-while getopts "fh" OPT; do
+while getopts "h" OPT; do
   case ${OPT} in
-    f) FUNCTION="numpy.logical_and";;
     h) help 0;;
   esac
 done
@@ -47,32 +44,38 @@ if [ ! -d ${3} ]; then
 
 fi
 
-TAG=$(printf "image_mask_%d" $(shuf -i 0-1000 -n 1))
+BASE=$(basename ${1} | sed -r 's/^(.*)\.(.*)$/\1/')
 
-TEMP1="${TMP}/${TAG}.tif"
-TEMP2="${TMP}/${TAG}.shp"
+MASK="${TMP}/${BASE}.mask.tif"
+
+LOGICAL=$(printf "numpy.logical_or( A == %d, B == %d )" ${2} ${2})
+LOGICAL=$(printf "numpy.logical_not( numpy.logical_or( %s, C == %d ) )" "${LOGICAL}" ${2})
 
 gdal_calc.py -A ${1} --A_band=1 \
              -B ${1} --B_band=2 \
              -C ${1} --C_band=3 \
-             --calc="127*${FUNCTION}(${FUNCTION}(A!=${2},B!=${2}),C!=${2})" \
-             --NoDataValue=255 \
-             --type=Byte --overwrite --outfile=${TEMP1} 1>/dev/null 2>&1
+             --calc="${LOGICAL}" \
+             --NoDataValue=0 --type=Byte --format=GTiff \
+             --overwrite --quiet --outfile=${MASK}
 
-gdal_polygonize.py -q ${TEMP1} -f "ESRI Shapefile" ${TEMP2}
+if [ ${?} -eq 0 ]; then
 
-TARGET=${3}"/"$(basename ${1} | cut -d. -f1)".shp"
+  TARGET="${3}/${BASE}.shp"
 
-ogr2ogr ${TARGET} ${TEMP2} -f "ESRI Shapefile" -where "DN=127" -overwrite
+  gdal_polygonize.py -q ${MASK} -f "ESRI Shapefile" ${TARGET}
 
-LAYER=$(basename ${TARGET} .shp)
+  SQL=$(printf "ALTER TABLE %s RENAME COLUMN DN TO ID" ${BASE})
 
-SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${LAYER})
+  ogrinfo -q ${TARGET} -sql "${SQL}"
 
-ogrinfo -q ${TARGET} -sql "${SQL}"
+  SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${BASE})
 
-SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
+  ogrinfo -q ${TARGET} -sql "${SQL}"
 
-ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
+  SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${BASE} $(basename ${1}))
 
-find ${TMP} -name "${TAG}.*" -type f -delete
+  ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
+
+fi
+
+rm -f ${MASK}

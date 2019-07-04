@@ -113,9 +113,8 @@ if [ ${CHECK} -eq 0 ]; then
   gdal_calc.py -A ${1} --A_band ${2} \
                -B ${1} --B_band ${3} \
                -C ${1} --C_band ${4} \
-               --outfile=${RESULT} --type=Byte --NoDataValue=0 \
-               --calc="numpy.rint( 0.299 * A + 0.587 * B + 0.114 * C )" \
-               > /dev/null 2>&1
+               --outfile=${RESULT} --type=Byte --NoDataValue=0 --format=GTiff --co=COMPRESS=LZW \
+               --calc="numpy.rint( 0.299 * A + 0.587 * B + 0.114 * C )" --overwrite --quiet
 
 else
 
@@ -126,8 +125,7 @@ else
   gdal_calc.py -A ${R_IMG_FILE} \
                -B ${G_IMG_FILE} \
                -C ${B_IMG_FILE} \
-               --outfile=${1} --type=Byte --NoDataValue=0 \
-               --calc="numpy.rint( 0.299 * A + 0.587 * B + 0.114 * C )" \
-               > /dev/null 2>&1
+               --outfile=${1} --type=Byte --NoDataValue=0 --format=GTiff -co=COMPRESS=LZW \
+               --calc="numpy.rint( 0.299 * A + 0.587 * B + 0.114 * C )" --overwrite --quiet
 
 fi

@@ -21,23 +21,23 @@ if [ ! -d ${2} ]; then
 
 fi
 
-TEMP="${TMP}/dem_mask_"$(shuf -i 0-1000 -n 1)".tif"
+BASE=$(basename ${1} | sed -r 's/^(.*)\.(.*)$/\1/')
 
-gdal_calc.py -A ${1} --calc="127*( A >= 0.0 )" --NoDataValue=255 --type=Byte \
-                     --overwrite --outfile=${TEMP} 1>/dev/null 2>&1
+MASK="${TMP}/${BASE}.mask.tif"
 
-TARGET=${2}"/"$(basename ${1} | cut -d. -f1)".shp"
+gdal_calc.py -A ${1} --calc="( A >= 0.0 )" --NoDataValue=0 --type=Byte --format=GTiff \
+                     --overwrite --quiet --outfile=${MASK}
 
-gdal_polygonize.py -q ${TEMP} -f "ESRI Shapefile" ${TARGET}
+TARGET="${2}/${BASE}.shp"
 
-LAYER=$(basename ${TARGET} .shp)
+gdal_polygonize.py -q ${MASK} -f "ESRI Shapefile" ${TARGET}
 
-SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${LAYER})
+SQL=$(printf "ALTER TABLE %s ADD COLUMN SOURCE VARCHAR(64)" ${BASE})
 
 ogrinfo -q ${TARGET} -sql "${SQL}"
 
-SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${LAYER} $(basename ${1}))
+SQL=$(printf "UPDATE '%s' SET SOURCE = '%s'" ${BASE} $(basename ${1}))
 
 ogrinfo -q ${TARGET} -dialect SQLite -sql "${SQL}"
 
-rm -f ${TEMP}
+rm -f ${MASK}
