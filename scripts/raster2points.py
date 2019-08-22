@@ -94,7 +94,7 @@ def main( args ):
 
   layer = vector.GetLayer()
 
-  if layer.GetGeomType() == wkbPoint:
+  if layer.GetGeomType() == ogr.wkbPoint:
     band = raster.GetRasterBand( args.band )
     null = band.GetNoDataValue()
 
