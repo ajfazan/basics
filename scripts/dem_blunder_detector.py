@@ -186,10 +186,10 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
 
-  parser.add_argument( '--radius', nargs = '?', type = int  , dest = 'radius', default = 2,
+  parser.add_argument( '--radius', nargs = '?', type = int, dest = 'radius', default = 2,
     help = 'specifies a radius for the Gaussian filter [default = 2]' )
 
-  parser.add_argument( '--sigma' , nargs = '?', type = float, dest = 'sigma' , default = 1.0,
+  parser.add_argument( '--sigma', nargs = '?', type = float, dest = 'sigma', default = 1.0,
     help = 'specifies a sigma value for the Gaussian filter [default = 1.0]' )
 
   parser.add_argument( '--area', nargs = '?', type = int, dest = 'area', default = 50,
