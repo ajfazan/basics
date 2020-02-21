@@ -51,8 +51,6 @@ def removeDuplicates( vertices, ths ):
 
   ( i, n ) = ( 0, len( vertices ) - 1 )
 
-  temp = n + 1 # for debugging purposes
-
   while i < n:
 
     # r = range( i + 1, n )
@@ -89,9 +87,22 @@ def removeDuplicates( vertices, ths ):
 
     i += 1
 
-  print ( temp, len( vertices) ) # for debugging purposes
-
   return vertices
+
+def parseFieldValue( field_type, feature, idx ):
+
+  value = None
+
+  if field_type == ogr.OFTInteger:
+    value = feature.GetFieldAsInteger( idx )
+  elif field_type == ogr.OFTInteger64:
+    value = feature.GetFieldAsInteger64( idx )
+  elif field_type == ogr.OFTReal:
+    value = feature.GetFieldAsDouble( idx )
+  elif field_type == ogr.OFTString:
+    value = feature.GetFieldAsString( idx )
+
+  return value
 
 def main( args ):
 
@@ -111,12 +122,22 @@ def main( args ):
   out_layer = output.CreateLayer( layer_name, crs, geom_type )
   feature_defn = out_layer.GetLayerDefn()
 
-  # Add an FID field
-  pkey = ogr.FieldDefn( "FID", ogr.OFTInteger64 )
-  pkey.SetWidth( 8 )
-  out_layer.CreateField( pkey )
+  src_defn = layer.GetLayerDefn()
 
-  fid = 1
+  fields = {}
+
+  for f in range( src_defn.GetFieldCount() ):
+    field_defn = src_defn.GetFieldDefn( f )
+
+    f_name = field_defn.GetNameRef()
+    f_type = field_defn.GetType()
+
+    field = ogr.FieldDefn( f_name, f_type )
+    field.SetWidth( field_defn.GetWidth() )
+    field.SetPrecision( field_defn.GetPrecision() )
+    out_layer.CreateField( field )
+
+    fields[f_name] = f_type
 
   if args.remove_holes:
 
@@ -131,11 +152,12 @@ def main( args ):
 
         out_feature = ogr.Feature( feature_defn )
         out_feature.SetGeometry( poly )
-        out_feature.SetField( "FID", fid )
+
+        for name in fields.keys():
+          idx = feature.GetFieldIndex( name )
+          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
 
         out_layer.CreateFeature( out_feature )
-
-        fid += 1
 
     elif ( geom_type == ogr.wkbMultiPolygon ):
 
@@ -153,13 +175,16 @@ def main( args ):
 
         out_feature = ogr.Feature( feature_defn )
         out_feature.SetGeometry( multi )
-        out_feature.SetField( "FID", fid )
+
+        for name in fields.keys():
+          idx = feature.GetFieldIndex( name )
+          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
 
         out_layer.CreateFeature( out_feature )
 
-        fid += 1
-
   else:
+
+    ( total, modified, count ) = ( 0, 0, layer.GetFeatureCount() )
 
     if ( geom_type == ogr.wkbLineString ):
 
@@ -171,7 +196,16 @@ def main( args ):
         for k in range( src.GetPointCount() ):
           vertices.append( src.GetPoint_2D( k ) )
 
+        n = len( vertices )
+
         vertices = removeDuplicates( vertices, args.ths )
+
+        n -= len( vertices )
+
+        total += n
+
+        if n:
+          modified += 1
 
         line = ogr.Geometry( ogr.wkbLineString )
         for k in range( len( vertices ) ):
@@ -179,13 +213,14 @@ def main( args ):
 
         out_feature = ogr.Feature( feature_defn )
         out_feature.SetGeometry( line )
-        out_feature.SetField( "FID", fid )
+
+        for name in fields.keys():
+          idx = feature.GetFieldIndex( name )
+          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
 
         out_layer.CreateFeature( out_feature )
 
         out_feature.Destroy()
-
-        fid += 1
 
     elif ( geom_type == ogr.wkbMultiLineString ):
 
@@ -203,7 +238,14 @@ def main( args ):
           for k in range( ptr.GetPointCount() ):
             vertices.append( ptr.GetPoint_2D( k ) )
 
+          n = len( vertices )
+
           vertices = removeDuplicates( vertices, args.ths )
+
+          n -= len( vertices )
+
+          if n:
+            modified += 1
 
           line = ogr.Geometry( ogr.wkbLineString )
           for k in range( len( vertices ) ):
@@ -211,16 +253,19 @@ def main( args ):
 
           geom.AddGeometry( line )
 
-        feature_defn = out_layer.GetLayerDefn()
         out_feature = ogr.Feature( feature_defn )
         out_feature.SetGeometry( geom )
-        out_feature.SetField( "FID", fid )
+
+        for name in fields.keys():
+          idx = feature.GetFieldIndex( name )
+          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
 
         out_layer.CreateFeature( out_feature )
 
         out_feature.Destroy()
 
-        fid += 1
+    if modified:
+      print ">> %d duplicate vertices removed from %d of %d feature(s)" % ( total, modified, count )
 
   ( out_layer, layer ) = ( None, None )
 
