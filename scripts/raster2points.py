@@ -1,42 +1,6 @@
 #!/usr/bin/env python
 
-from osgeo import gdal, ogr, osr
-import argparse, math, os, sys
-import numpy as np
-
-def isFile( p ):
-
-  if not os.path.isfile( p ):
-    raise argparse.ArgumentTypeError( "{0} is not a regular file".format( p ) )
-  return p
-
-def openRaster( filename ):
-
-  handle = gdal.Open( filename )
-
-  if handle is None:
-    sys.exit( 'Exception: Unable to open raster dataset {}'.format( filename ) )
-
-  return handle
-
-def openVector( filename ):
-
-  drivers = dict()
-
-  drivers['.shp'] = 'ESRI Shapefile'
-  drivers['.geojson'] = 'GeoJSON'
-
-  ext = os.path.splitext( os.path.basename( filename ) )
-  ext = ext[1].lower()
-
-  driver = ogr.GetDriverByName( drivers[ext] )
-
-  handle = driver.Open( filename, 1 )
-
-  if handle is None:
-    sys.exit( 'Exception: Unable to open vector dataset {}'.format( filename ) )
-
-  return handle
+from core import *
 
 def createAffineTransform( params ):
 

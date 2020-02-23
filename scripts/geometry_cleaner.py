@@ -1,51 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, sys
-import numpy as np
-
-try:
-  from osgeo import ogr, osr
-except:
-  print sys.stderr, "OGR module not found... Exiting"
-  sys.exit( 1 )
-
-def isFile( pathname ):
-
-  if not os.path.isfile( pathname ):
-    raise argparse.ArgumentTypeError( "{0} is not a regular file".format( pathname ) )
-  return pathname
-
-def openDataset( filename, drivers ):
-
-  ( base, ext ) = os.path.splitext( os.path.basename( filename ) )
-
-  ext = ext.lower()
-
-  if not( ext in drivers.keys() ):
-    print sys.stderr, "Unsupported input data set: " + filename
-    sys.exit( -1 )
-
-  driver = ogr.GetDriverByName( drivers[ext] )
-
-  dataset = driver.Open( filename, 0 )
-
-  return driver, dataset
-
-def createOutput( filename, drivers ):
-
-  ( base, ext ) = os.path.splitext( os.path.basename( filename ) )
-
-  ext = ext.lower()
-
-  if not( ext in drivers.keys() ):
-    print sys.stderr, "Unsupported output data set: " + filename
-    sys.exit( -1 )
-
-  driver = ogr.GetDriverByName( drivers[ext] )
-
-  output = driver.CreateDataSource( filename )
-
-  return output, base
+from core import *
 
 def removeDuplicates( vertices, ths ):
 
@@ -106,15 +61,15 @@ def parseFieldValue( field_type, feature, idx ):
 
 def main( args ):
 
-  drivers = { ".shp": "ESRI Shapefile", ".geojson": "GeoJSON" }
+  gdal.UseExceptions()
 
-  ( driver, dataset ) = openDataset( args.filename, drivers )
+  dataset = openVector( args.filename, 0 )
 
   layer = dataset.GetLayer()
 
   geom_type = layer.GetGeomType()
 
-  ( output, layer_name ) = createOutput( args.outfile, drivers )
+  ( output, layer_name ) = openVector( args.outfile )
 
   crs = osr.SpatialReference()
   crs.ImportFromWkt( layer.GetSpatialRef().ExportToWkt() )
