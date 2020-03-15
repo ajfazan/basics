@@ -44,9 +44,11 @@ def removeDuplicates( vertices, ths ):
 
   return vertices
 
-def parseFieldValue( field_type, feature, idx ):
+def parseFieldValue( feature, field_name, field_type ):
 
   value = None
+
+  idx = feature.GetFieldIndex( field_name )
 
   if field_type == ogr.OFTInteger:
     value = feature.GetFieldAsInteger( idx )
@@ -58,6 +60,10 @@ def parseFieldValue( field_type, feature, idx ):
     value = feature.GetFieldAsString( idx )
 
   return value
+
+def buildFeature( geometries, attributes, feature_type ):
+
+  return None
 
 def main( args ):
 
@@ -109,8 +115,7 @@ def main( args ):
         out_feature.SetGeometry( poly )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
 
         out_layer.CreateFeature( out_feature )
 
@@ -132,8 +137,7 @@ def main( args ):
         out_feature.SetGeometry( multi )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
 
         out_layer.CreateFeature( out_feature )
 
@@ -170,8 +174,7 @@ def main( args ):
         out_feature.SetGeometry( line )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
 
         out_layer.CreateFeature( out_feature )
 
@@ -212,8 +215,7 @@ def main( args ):
         out_feature.SetGeometry( geom )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
 
         out_layer.CreateFeature( out_feature )
 
