@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from osgeo import gdal, ogr, osr
 from scipy.signal import *
@@ -164,7 +164,7 @@ def main( args ):
   count = layer2.GetFeatureCount()
 
   if not args.quiet:
-    print "%d/%d features before/after cleanup process" % ( layer1.GetFeatureCount(), count )
+    print( "%d/%d features before/after cleanup process" % ( layer1.GetFeatureCount(), count ) )
 
   ds.Destroy()
   driver.DeleteDataSource( tmp[2] )

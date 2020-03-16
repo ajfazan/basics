@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse, os, sys
 import numpy as np
@@ -6,7 +6,7 @@ import numpy as np
 try:
   from osgeo import ogr, osr
 except:
-  print sys.stderr, "OGR module not found... Exiting"
+  print( sys.stderr, "OGR module not found... Exiting" )
   sys.exit( 1 )
 
 def isFile( pathname ):
@@ -22,7 +22,7 @@ def openDataset( filename, drivers ):
   ext = ext.lower()
 
   if not( ext in drivers.keys() ):
-    print sys.stderr, "Unsupported input data set: " + filename
+    print( sys.stderr, "Unsupported input data set: " + filename )
     sys.exit( -1 )
 
   driver = ogr.GetDriverByName( drivers[ext] )
@@ -38,7 +38,7 @@ def createOutput( filename, drivers ):
   ext = ext.lower()
 
   if not( ext in drivers.keys() ):
-    print sys.stderr, "Unsupported output data set: " + filename
+    print( sys.stderr, "Unsupported output data set: " + filename )
     sys.exit( -1 )
 
   driver = ogr.GetDriverByName( drivers[ext] )
@@ -264,8 +264,53 @@ def main( args ):
 
         out_feature.Destroy()
 
+    elif ( geom_type == ogr.wkbPolygon ):
+
+      """
+      for feature in layer:
+
+        geom = feature.GetGeometryRef()
+
+        poly = ogr.Geometry( ogr.wkbPolygon )
+        poly.AddGeometry( geom.GetGeometryRef( 0 ) )
+
+        out_feature = ogr.Feature( feature_defn )
+        out_feature.SetGeometry( poly )
+
+        for name in fields.keys():
+          idx = feature.GetFieldIndex( name )
+          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+
+        out_layer.CreateFeature( out_feature )
+      """
+
+    elif ( geom_type == ogr.wkbMultiPolygon ):
+
+      """
+      for feature in layer:
+
+      src = feature.GetGeometryRef()
+
+      multi = ogr.Geometry( ogr.wkbMultiPolygon )
+
+      for k in range( src.GetGeometryCount() ):
+        ptr = src.GetGeometryRef( k )
+        poly = ogr.Geometry( ogr.wkbPolygon )
+        poly.AddGeometry( ptr.GetGeometryRef( 0 ) )
+        multi.AddGeometry( poly )
+
+      out_feature = ogr.Feature( feature_defn )
+      out_feature.SetGeometry( multi )
+
+      for name in fields.keys():
+        idx = feature.GetFieldIndex( name )
+        out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+
+      out_layer.CreateFeature( out_feature )
+      """
+
     if modified:
-      print ">> %d duplicate vertices removed from %d of %d feature(s)" % ( total, modified, count )
+      print( ">> %d duplicate vertices removed from %d of %d feature(s)" % ( total, modified, count ) )
 
   ( out_layer, layer ) = ( None, None )
 

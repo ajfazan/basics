@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from osgeo import gdal, osr
 import numpy as np
@@ -66,8 +66,8 @@ def computePCA( img, args ):
 
   valid = np.unique( valid )
   if valid.size != 1:
-    print sys.stderr, valid
-    print sys.stderr, "[WARNING]: Background is not uniform for image", args.filename
+    print( sys.stderr, valid )
+    print( sys.stderr, "[WARNING]: Background is not uniform for image", args.filename )
 
   pixels = back.sum()
 
@@ -106,23 +106,23 @@ def computePCA( img, args ):
         corr[j,i] = corr[i,j]
 
     w, v = np.linalg.eigh( corr )
-    print "\nCORRELATION MATRIX =\n"
-    print corr
+    print( "\nCORRELATION MATRIX =\n" )
+    print( corr )
 
   else:
 
     w, v = np.linalg.eigh( sigma )
-    print "\nCOVARIANCE MATRIX =\n"
-    print sigma
+    print( "\nCOVARIANCE MATRIX =\n" )
+    print( sigma )
 
   w /= w.sum()
 
   k = 1
 
-  print ""
+  print( "" )
 
   for p in w[::-1]:
-    print "PC%d Percent Info: %f" % ( k, p )
+    print( "PC%d Percent Info: %f" % ( k, p ) )
     k += 1
 
   return v

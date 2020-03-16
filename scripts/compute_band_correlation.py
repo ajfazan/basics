@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from osgeo import gdal
 
@@ -11,8 +11,8 @@ gdal.UseExceptions()
 
 def Usage( code ):
 
-  print "Usage:"
-  print "\t%s <IMG1> <IMG2>" % os.path.basename( sys.argv[0] )
+  print( "Usage:" )
+  print( "\t%s <IMG1> <IMG2>" % os.path.basename( sys.argv[0] ) )
   sys.exit( code )
 
 def OpenImage( filename ):
@@ -20,7 +20,7 @@ def OpenImage( filename ):
   handle = gdal.Open( filename )
 
   if handle is None:
-    print "Unable to open image %s" % filename
+    print( "Unable to open image %s" % filename )
     sys.exit( 1 )
 
   return handle
@@ -29,7 +29,7 @@ def DisplayMetadata( himg ):
 
   n = himg.RasterCount
 
-  print "Band count: %s" % n
+  print( "Band count: %s" % n )
 
   for band in range( 1, n + 1 ):
 
@@ -38,18 +38,18 @@ def DisplayMetadata( himg ):
     if channel is None:
       continue
 
-    print "NODATA VALUE = ", channel.GetNoDataValue()
-    print "MINIMUM = ", channel.GetMinimum()
-    print "MAXIMUM = ", channel.GetMaximum()
-    print "SCALE = ", channel.GetScale()
-    print "UNIT TYPE = ", channel.GetUnitType()
+    print( "NODATA VALUE = ", channel.GetNoDataValue() )
+    print( "MINIMUM = ", channel.GetMinimum() )
+    print( "MAXIMUM = ", channel.GetMaximum() )
+    print( "SCALE = ", channel.GetScale() )
+    print( "UNIT TYPE = ", channel.GetUnitType() )
 
 def ComputeCorr( img1, img2 ):
 
   n = img1.RasterCount
 
   if n != img2.RasterCount:
-    print "Band count mismatch"
+    print( "Band count mismatch" )
     return None
 
   for band in range( 1, n + 1 ):
@@ -71,11 +71,11 @@ def ComputeCorr( img1, img2 ):
       try:
 
         corr = s_xy / ( math.sqrt( s_xx ) * math.sqrt( s_yy ) )
-        print "Correlation coefficient [%d|%d]: %f" % ( band, band, corr )
+        print( "Correlation coefficient [%d|%d]: %f" % ( band, band, corr ) )
 
-      except ValueError, e:
+      except( ValueError, e ):
 
-        print "Unable to compute correlation: %s" % e
+        print( "Unable to compute correlation: %s" % e )
         pass
 
 def main( img1, img2 ):
