@@ -8,4 +8,5 @@ if [ ${#} -ne 2 ]; then
 
 fi
 
-wget -c --recursive ftp://cddis.gsfc.nasa.gov/glonass/products/${1}/{emx${1}[0-6].clk,igl${1}[0-6].sp3}.Z -P $2
+wget -c --recursive \
+  ftp://cddis.gsfc.nasa.gov/glonass/products/${1}/{emx${1}[0-6].clk,igl${1}[0-6].sp3}.Z -P $2

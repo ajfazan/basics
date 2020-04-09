@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env osgeo_python
 
 from osgeo import gdal, ogr, osr
 from scipy.signal import *
@@ -198,9 +198,11 @@ if __name__ == "__main__":
   parser.add_argument( '--cutoff', nargs = '?', type = float, dest = 'cutoff', default = 0.05,
     help = 'specifies a threshold to threshold the filtered DEM [default = 0.05]' )
 
-  parser.add_argument( '--quiet', action = 'store_true', help = 'suppress progress messages' )
+  parser.add_argument( '--quiet', action = 'store_true',
+    help = 'suppress progress messages' )
 
-  parser.add_argument( '--purge', action = 'store_true', help = 'remove an empty resulting dataset')
+  parser.add_argument( '--purge', action = 'store_true',
+    help = 'remove an empty resulting dataset' )
 
   parser.add_argument( 'filename', type=isFile )
   parser.add_argument( 'outdir', type=isDir )

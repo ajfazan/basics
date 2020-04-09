@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env osgeo_python
 
 from osgeo import gdal, osr
 import numpy as np

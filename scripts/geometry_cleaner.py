@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env osgeo_python
 
 import argparse, os, sys
 import numpy as np
@@ -88,6 +88,25 @@ def removeDuplicates( vertices, ths ):
     i += 1
 
   return vertices
+
+def cleanupGeometry( geom_ref, geom_type, rm_ths ):
+
+  vertices = []
+
+  for k in range( geom_ref.GetPointCount() ):
+    vertices.append( geom_ref.GetPoint_2D( k ) )
+
+  n = len( vertices )
+
+  vertices = removeDuplicates( vertices, rm_ths )
+
+  n -= len( vertices )
+
+  geom = ogr.Geometry( geom_type )
+  for k in range( len( vertices ) ):
+    geom.AddPoint_2D( vertices[k][0], vertices[k][1] )
+
+  return ( geom, n )
 
 def parseFieldValue( field_type, feature, idx ):
 
@@ -184,32 +203,22 @@ def main( args ):
 
   else:
 
+    field = ogr.FieldDefn( "removed", ogr.OFTInteger )
+    field.SetWidth( 8 )
+    field.SetPrecision( 0 )
+    out_layer.CreateField( field )
+
     ( total, modified, count ) = ( 0, 0, layer.GetFeatureCount() )
 
     if ( geom_type == ogr.wkbLineString ):
 
       for feature in layer:
 
-        src = feature.GetGeometryRef()
-
-        vertices = []
-        for k in range( src.GetPointCount() ):
-          vertices.append( src.GetPoint_2D( k ) )
-
-        n = len( vertices )
-
-        vertices = removeDuplicates( vertices, args.ths )
-
-        n -= len( vertices )
+        ( line, n ) = cleanupGeometry( feature.GetGeometryRef(), ogr.wkbLineString, args.ths )
 
         total += n
 
-        if n:
-          modified += 1
-
-        line = ogr.Geometry( ogr.wkbLineString )
-        for k in range( len( vertices ) ):
-          line.AddPoint_2D( vertices[k][0], vertices[k][1] )
+        modified += ( n > 0 )
 
         out_feature = ogr.Feature( feature_defn )
         out_feature.SetGeometry( line )
@@ -217,6 +226,7 @@ def main( args ):
         for name in fields.keys():
           idx = feature.GetFieldIndex( name )
           out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+        out_feature.SetField( "removed", n )
 
         out_layer.CreateFeature( out_feature )
 
@@ -226,91 +236,112 @@ def main( args ):
 
       for feature in layer:
 
+        removed = 0
+
         src = feature.GetGeometryRef()
 
-        geom = ogr.Geometry( ogr.wkbMultiLineString )
+        multiline = ogr.Geometry( ogr.wkbMultiLineString )
 
         for k in range( src.GetGeometryCount() ):
 
-          ptr = src.GetGeometryRef( k )
+          ( line, n ) = cleanupGeometry( src.GetGeometryRef( k ), ogr.wkbLineString, args.ths )
 
-          vertices = []
-          for k in range( ptr.GetPointCount() ):
-            vertices.append( ptr.GetPoint_2D( k ) )
+          total += n
+          removed += n
 
-          n = len( vertices )
-
-          vertices = removeDuplicates( vertices, args.ths )
-
-          n -= len( vertices )
-
-          if n:
-            modified += 1
-
-          line = ogr.Geometry( ogr.wkbLineString )
-          for k in range( len( vertices ) ):
-            line.AddPoint_2D( vertices[k][0], vertices[k][1] )
-
-          geom.AddGeometry( line )
+          multiline.AddGeometry( line )
 
         out_feature = ogr.Feature( feature_defn )
-        out_feature.SetGeometry( geom )
+        out_feature.SetGeometry( multiline )
 
         for name in fields.keys():
           idx = feature.GetFieldIndex( name )
           out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+        out_feature.SetField( "removed", removed )
 
         out_layer.CreateFeature( out_feature )
 
         out_feature.Destroy()
 
+        modified += ( removed > 0 )
+
     elif ( geom_type == ogr.wkbPolygon ):
 
-      """
       for feature in layer:
 
-        geom = feature.GetGeometryRef()
+        removed = 0
 
-        poly = ogr.Geometry( ogr.wkbPolygon )
-        poly.AddGeometry( geom.GetGeometryRef( 0 ) )
+        src = feature.GetGeometryRef()
+
+        polygon = ogr.Geometry( ogr.wkbPolygon )
+
+        for k in range( src.GetGeometryCount() ):
+
+          ( ring, n ) = cleanupGeometry( src.GetGeometryRef( k ), ogr.wkbLinearRing, args.ths )
+
+          total += n
+          removed += n
+
+          polygon.AddGeometry( ring )
+
+        polygon.CloseRings()
 
         out_feature = ogr.Feature( feature_defn )
-        out_feature.SetGeometry( poly )
+        out_feature.SetGeometry( polygon )
 
         for name in fields.keys():
           idx = feature.GetFieldIndex( name )
           out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+        out_feature.SetField( "removed", removed )
 
         out_layer.CreateFeature( out_feature )
-      """
+
+        modified += ( removed > 0 )
 
     elif ( geom_type == ogr.wkbMultiPolygon ):
 
-      """
       for feature in layer:
 
-      src = feature.GetGeometryRef()
+        removed = 0
 
-      multi = ogr.Geometry( ogr.wkbMultiPolygon )
+        ptr = feature.GetGeometryRef()
 
-      for k in range( src.GetGeometryCount() ):
-        ptr = src.GetGeometryRef( k )
-        poly = ogr.Geometry( ogr.wkbPolygon )
-        poly.AddGeometry( ptr.GetGeometryRef( 0 ) )
-        multi.AddGeometry( poly )
+        multipolygon = ogr.Geometry( ogr.wkbMultiPolygon )
 
-      out_feature = ogr.Feature( feature_defn )
-      out_feature.SetGeometry( multi )
+        for i in range( ptr.GetGeometryCount() ):
 
-      for name in fields.keys():
-        idx = feature.GetFieldIndex( name )
-        out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          src = ptr.GetGeometryRef( i )
 
-      out_layer.CreateFeature( out_feature )
-      """
+          polygon = ogr.Geometry( ogr.wkbPolygon )
+
+          for j in range( src.GetGeometryCount() ):
+
+            ( ring, n ) = cleanupGeometry( src.GetGeometryRef( j ), ogr.wkbLinearRing, args.ths )
+
+            total += n
+            removed += n
+
+            polygon.AddGeometry( ring )
+
+          polygon.CloseRings()
+
+          multipolygon.AddGeometry( polygon )
+
+        out_feature = ogr.Feature( feature_defn )
+        out_feature.SetGeometry( multipolygon )
+
+        for name in fields.keys():
+          idx = feature.GetFieldIndex( name )
+          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+        out_feature.SetField( "removed", removed )
+
+        out_layer.CreateFeature( out_feature )
+
+        modified += ( removed > 0 )
 
     if modified:
-      print( ">> %d duplicate vertices removed from %d of %d feature(s)" % ( total, modified, count ) )
+      print( ">> %d duplicate vertice(s) were removed from %d of %d feature(s)" \
+           % ( total, modified, count ) )
 
   ( out_layer, layer ) = ( None, None )
 
@@ -326,7 +357,7 @@ if __name__ == "__main__":
     help = 'specifies a threshold for point comparisons [default = 1e-6]' )
 
   parser.add_argument( '--remove_holes', action = 'store_true',
-    help = 'remove holes from polygons or multi-polygons')
+    help = 'remove holes from polygons or multi-polygons' )
 
   parser.add_argument( 'filename', type=isFile )
   parser.add_argument( 'outfile', type=str )

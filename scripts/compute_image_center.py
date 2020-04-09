@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env osgeo_python
 
 from osgeo  import gdal
 import os, sys

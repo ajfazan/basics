@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env osgeo_python
 
 from osgeo import gdal, ogr, osr
 import argparse, math, os, sys
@@ -147,7 +147,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
 
   parser.add_argument( '--band', nargs = '?', type = int, default = 1,
-    help = 'specified the raster band used to interpolate desired values')
+    help = 'specified the raster band used to interpolate desired values' )
 
   parser.add_argument( '--field', nargs = '?', type = str, default = 'Z',
     help = 'specifies the field name where the interpolated results will be written to' )

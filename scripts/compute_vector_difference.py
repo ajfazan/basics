@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env osgeo_python
 
 from osgeo import ogr, osr
 import os, sys
