@@ -1,40 +1,8 @@
 #!/usr/bin/env osgeo_python
 
-from osgeo import gdal, ogr, osr
 from scipy.signal import *
 from tempfile import gettempdir
-import numpy as np
-import argparse, math, os, sys
-
-def isFile( p ):
-
-  if not os.path.isfile( p ):
-    raise argparse.ArgumentTypeError( "{0} is not a regular file".format( p ) )
-  return p
-
-def isDir( p ):
-
-  if not os.path.isdir( p ):
-    raise argparse.ArgumentTypeError( "{0} is not a directory".format( p ) )
-  return p
-
-def openRaster( filename ):
-
-  handle = gdal.Open( filename )
-
-  if handle is None:
-    sys.exit( 'Exception: Unable to open raster dataset {}'.format( filename ) )
-
-  has_nodata = True
-  for k in range( 1, 1 + handle.RasterCount ):
-    band = handle.GetRasterBand( k )
-    nodata = band.GetNoDataValue()
-    has_nodata = ( has_nodata and ( not nodata is None ) )
-
-  if not has_nodata:
-    sys.exit( 'Exception: Raster dataset {} has no defined nodata value'.format( filename ) )
-
-  return handle
+from core import *
 
 def createTempRaster( filename, crs, geo, array ):
 

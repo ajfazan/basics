@@ -1,51 +1,6 @@
 #!/usr/bin/env osgeo_python
 
-import argparse, os, sys
-import numpy as np
-
-try:
-  from osgeo import ogr, osr
-except:
-  print( sys.stderr, "OGR module not found... Exiting" )
-  sys.exit( 1 )
-
-def isFile( pathname ):
-
-  if not os.path.isfile( pathname ):
-    raise argparse.ArgumentTypeError( "{0} is not a regular file".format( pathname ) )
-  return pathname
-
-def openDataset( filename, drivers ):
-
-  ( base, ext ) = os.path.splitext( os.path.basename( filename ) )
-
-  ext = ext.lower()
-
-  if not( ext in drivers.keys() ):
-    print( sys.stderr, "Unsupported input data set: " + filename )
-    sys.exit( -1 )
-
-  driver = ogr.GetDriverByName( drivers[ext] )
-
-  dataset = driver.Open( filename, 0 )
-
-  return driver, dataset
-
-def createOutput( filename, drivers ):
-
-  ( base, ext ) = os.path.splitext( os.path.basename( filename ) )
-
-  ext = ext.lower()
-
-  if not( ext in drivers.keys() ):
-    print( sys.stderr, "Unsupported output data set: " + filename )
-    sys.exit( -1 )
-
-  driver = ogr.GetDriverByName( drivers[ext] )
-
-  output = driver.CreateDataSource( filename )
-
-  return output, base
+from core import *
 
 def removeDuplicates( vertices, ths ):
 
@@ -108,9 +63,11 @@ def cleanupGeometry( geom_ref, geom_type, rm_ths ):
 
   return ( geom, n )
 
-def parseFieldValue( field_type, feature, idx ):
+def parseFieldValue( feature, field_name, field_type ):
 
   value = None
+
+  idx = feature.GetFieldIndex( field_name )
 
   if field_type == ogr.OFTInteger:
     value = feature.GetFieldAsInteger( idx )
@@ -123,17 +80,21 @@ def parseFieldValue( field_type, feature, idx ):
 
   return value
 
+def buildFeature( geometries, attributes, feature_type ):
+
+  return None
+
 def main( args ):
 
-  drivers = { ".shp": "ESRI Shapefile", ".geojson": "GeoJSON" }
+  gdal.UseExceptions()
 
-  ( driver, dataset ) = openDataset( args.filename, drivers )
+  dataset = openVector( args.filename, 0 )
 
   layer = dataset.GetLayer()
 
   geom_type = layer.GetGeomType()
 
-  ( output, layer_name ) = createOutput( args.outfile, drivers )
+  ( output, layer_name ) = openVector( args.outfile )
 
   crs = osr.SpatialReference()
   crs.ImportFromWkt( layer.GetSpatialRef().ExportToWkt() )
@@ -173,10 +134,11 @@ def main( args ):
         out_feature.SetGeometry( poly )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
 
         out_layer.CreateFeature( out_feature )
+
+        out_feature.Destroy()
 
     elif ( geom_type == ogr.wkbMultiPolygon ):
 
@@ -196,8 +158,9 @@ def main( args ):
         out_feature.SetGeometry( multi )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
+
+        out_feature.Destroy()
 
         out_layer.CreateFeature( out_feature )
 
@@ -218,8 +181,6 @@ def main( args ):
 
         total += n
 
-        modified += ( n > 0 )
-
         out_feature = ogr.Feature( feature_defn )
         out_feature.SetGeometry( line )
 
@@ -231,6 +192,8 @@ def main( args ):
         out_layer.CreateFeature( out_feature )
 
         out_feature.Destroy()
+
+        modified += ( n > 0 )
 
     elif ( geom_type == ogr.wkbMultiLineString ):
 
@@ -255,8 +218,7 @@ def main( args ):
         out_feature.SetGeometry( multiline )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
         out_feature.SetField( "removed", removed )
 
         out_layer.CreateFeature( out_feature )
@@ -290,11 +252,12 @@ def main( args ):
         out_feature.SetGeometry( polygon )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
         out_feature.SetField( "removed", removed )
 
         out_layer.CreateFeature( out_feature )
+
+        out_feature.Destroy()
 
         modified += ( removed > 0 )
 
@@ -331,11 +294,12 @@ def main( args ):
         out_feature.SetGeometry( multipolygon )
 
         for name in fields.keys():
-          idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
         out_feature.SetField( "removed", removed )
 
         out_layer.CreateFeature( out_feature )
+
+        out_feature.Destroy()
 
         modified += ( removed > 0 )
 
