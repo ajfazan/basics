@@ -4,7 +4,7 @@ import argparse, math, os, sys
 try:
   from osgeo import gdal, ogr, osr
 except:
-  sys.exit( "[ERROR]: GDAL modules not found..." )
+  sys.exit( "[ERROR]: OSGEO modules not found..." )
 
 import numpy as np
 
