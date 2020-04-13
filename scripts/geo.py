@@ -91,13 +91,15 @@ class raster:
     Compute histogram for a particular raster band
     """
 
-    hist = {}
-
     band = self.LoadBand( num )
     info = self.GetBandInfo( num )
 
-    for dn in range( info['min'], info['max'] + 1 ):
-      hist[dn] = np.sum( band == dn )
+    hist = np.histogram( band, bins = range( info['min'], info['max'] + 2 ) )
+
+    seq = hist[1].tolist()
+    del seq[-1]
+
+    hist = dict( zip( seq, hist[0].tolist() ) )
 
     pixels = 0.0
 
@@ -126,8 +128,6 @@ class raster:
 
     hist = self.ComputeBandHistogram( num, True )
 
-    result = 0.0
-    for p in hist.values():
-      result += ( p * math.log( p, 2.0 ) )
+    p = np.array( hist.values() )
 
-    return abs( result )
+    return -np.sum( p * np.log2( p ) )
