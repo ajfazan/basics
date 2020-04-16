@@ -51,7 +51,10 @@ def openVector( filename, mode = 1 ):
 
   driver = ogr.GetDriverByName( drivers[ext] )
 
-  handle = driver.Open( filename, mode )
+  if mode == 0:
+    handle = driver.Open( filename )
+  elif mode == 1:
+    handle = driver.CreateDataSource( filename )
 
   if handle is None:
     sys.exit( "Exception: Unable to open vector dataset {0}".format( filename ) )

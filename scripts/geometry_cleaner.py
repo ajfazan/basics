@@ -88,13 +88,13 @@ def main( args ):
 
   gdal.UseExceptions()
 
-  dataset = openVector( args.filename, 0 )
+  ( dataset, layer_name ) = openVector( args.filename, 0 )
 
   layer = dataset.GetLayer()
 
   geom_type = layer.GetGeomType()
 
-  ( output, layer_name ) = openVector( args.outfile )
+  ( output, layer_name ) = openVector( args.outfile, 1 )
 
   crs = osr.SpatialReference()
   crs.ImportFromWkt( layer.GetSpatialRef().ExportToWkt() )
@@ -186,7 +186,7 @@ def main( args ):
 
         for name in fields.keys():
           idx = feature.GetFieldIndex( name )
-          out_feature.SetField( name, parseFieldValue( fields[name], feature, idx ) )
+          out_feature.SetField( name, parseFieldValue( feature, name, fields[name] ) )
         out_feature.SetField( "removed", n )
 
         out_layer.CreateFeature( out_feature )
