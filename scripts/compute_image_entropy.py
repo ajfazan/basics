@@ -10,7 +10,7 @@ def main( args ):
 
   for num in bands:
     e = dataset.ComputeBandEntropy( num )
-    print( "[%d]: %.12f" % ( num, e ) )
+    print( "[%d]:%.15f" % ( num, e ) )
 
 if __name__ == "__main__":
 

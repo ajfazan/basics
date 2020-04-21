@@ -7,6 +7,7 @@ class raster:
     """
     Constructor
     """
+
     self.handle_ = gdal.Open( filename )
 
     if self.handle_ is None:
@@ -20,14 +21,32 @@ class raster:
       if not( nodata is None ):
         self.band_nodata_[k] = nodata
 
-  def LoadBand( self, num ):
+  @staticmethod
+  def histogram_bins_iterator( data_type ):
+
+    typename = gdal.GetDataTypeName( data_type )
+
+    if typename == 'Byte':
+      ( first, last ) = ( 0, 256 )
+    elif typename == 'Int16':
+      ( first, last ) = ( -32768, 32768 )
+    elif typename == 'UInt16':
+      ( first, last ) = ( 0, 65536 )
+
+    while first <= last:
+      yield first
+      first += 1
+
+  def GetBand( self, num, load = False ):
     """
-    Load a raster band into an array
+    Get handle to a raster band, or (optionally) load a raster band into an array
     """
 
     if num <= self.handle_.RasterCount:
       band = self.handle_.GetRasterBand( num )
-      return band.ReadAsArray()
+      if load == True:
+        band = band.ReadAsArray()
+      return band
 
     return None
 
@@ -60,55 +79,28 @@ class raster:
 
     return nodata
 
-  def GetBandInfo( self, num ):
-    """
-    Get basic band statistics
-    """
-
-    if num > self.handle_.RasterCount:
-      sys.exit( "Index [{0}] out of bounds".format( num ) )
-      return None
-
-    info = {}
-
-    info['nodata'] = self.GetBandNoData( num )
-
-    band = self.handle_.GetRasterBand( num )
-
-    min_dn = band.GetMinimum()
-    max_dn = band.GetMaximum()
-
-    if not min_dn or not max_dn:
-      ( min_dn, max_dn ) = band.ComputeRasterMinMax( True )
-
-    info['min'] = int( min_dn )
-    info['max'] = int( max_dn )
-
-    return info
-
   def ComputeBandHistogram( self, num, normalized = False ):
     """
     Compute histogram for a particular raster band
     """
 
-    band = self.LoadBand( num )
-    info = self.GetBandInfo( num )
+    band = self.GetBand( num )
+    buckets = list( raster.histogram_bins_iterator( band.DataType ) )
+    band = band.ReadAsArray()
+    hist = np.histogram( band, bins = buckets )
 
-    hist = np.histogram( band, bins = range( info['min'], info['max'] + 2 ) )
+    assert( buckets == hist[1].tolist() )
 
-    seq = hist[1].tolist()
-    del seq[-1]
+    hist = dict( zip( hist[1].tolist(), hist[0].tolist() ) )
 
-    hist = dict( zip( seq, hist[0].tolist() ) )
+    nodata = self.GetBandNoData( num )
 
-    pixels = 0.0
-
-    if info['nodata'] is None:
+    if nodata is None:
       pixels = float( band.Xsize * band.Ysize )
     else:
-      pixels = float( np.sum( band != info['nodata'] ) )
-      if hist.has_key( info['nodata'] ):
-        del hist[info['nodata']]
+      pixels = float( np.sum( band != nodata ) )
+      if hist.has_key( nodata ):
+        del hist[nodata]
 
     assert( pixels == sum( hist.values() ) )
 

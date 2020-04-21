@@ -2,43 +2,24 @@
 
 from core import *
 
+def equalPoint( p1, p2, ths ):
+
+  d = np.array( p1, dtype=np.float64 ) - np.array( p2, dtype=np.float64 )
+
+  return ( math.sqrt( np.dot( d, d ) ) <= ths )
+
 def removeDuplicates( vertices, ths ):
 
   ( i, n ) = ( 0, len( vertices ) - 1 )
 
   while i < n:
 
-    # r = range( i + 1, n )
-
-    # a = np.array( vertices[i], dtype=np.float64 )
-
-    # for j in r:
-
-      # b = np.array( vertices[j], dtype=np.float64 )
-
-      # if np.sum( np.fabs( a - b ) < ths ) > 0: # vertices[i] == vertices[j]
-
-        # del vertices[j]
-        # n -= 1
-        # r = range( i + 1, n )
-
-    # i += 1
-
-    a = np.array( vertices[i], dtype=np.float64 )
-
     j = i + 1
 
-    b = np.array( vertices[j], dtype=np.float64 )
-
-    while np.sum( np.fabs( a - b ) < ths ) > 0: # vertices[i] == vertices[j]
+    while ( j <= n ) and equalPoint( vertices[i], vertices[j], ths ):
 
       del vertices[j]
       n -= 1
-
-      if ( j > n ):
-        break
-      else:
-        b = np.array( vertices[j], dtype=np.float64 )
 
     i += 1
 
