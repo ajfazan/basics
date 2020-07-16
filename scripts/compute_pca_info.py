@@ -2,6 +2,8 @@
 
 from core import *
 
+from tempfile import NamedTemporaryFile
+
 def computePCA( img, args ):
 
   if args.bands is None:
@@ -11,52 +13,50 @@ def computePCA( img, args ):
     bands = args.bands
     n = len( bands )
 
-  sigma = np.zeros( ( n, n ), dtype = np.float64 )
-
-  channels = []
-  valid = []
-
-  back = np.ones( ( img.RasterYSize, img.RasterXSize ) )
+  ( band, nodata, pixels ) = ( [], [], 0.0 )
 
   for k in bands:
+    band.append( img.GetRasterBand( k ) )
+    nodata.append( band[k - 1].GetNoDataValue() )
 
-    band = img.GetRasterBand( k )
+  rows = np.zeros( ( n, img.RasterXSize ) )
 
-    array = np.array( band.ReadAsArray(), dtype = np.float64 )
+  sigma = np.zeros( ( n, n ), dtype = np.float64 )
 
-    mask = ( array != band.GetNoDataValue() )
+  s = np.zeros( ( n, 1 ), dtype = np.float64 )
 
-    valid.append( mask.sum() )
+  bands = range( n )
 
-    back = np.logical_and( back, mask )
+  for r in range( img.RasterYSize ):
 
-    channels.append( array )
+    valid = np.ones( ( 1, img.RasterXSize ), dtype = np.bool )
 
-  valid = np.unique( valid )
-  if valid.size != 1:
-    print( sys.stderr, valid )
-    print( sys.stderr, "[WARNING]: Background is not uniform for image", args.filename )
+    for k in bands:
+      rows[k,:] = band[k].ReadAsArray( xoff = 0,
+                                       yoff = r, win_xsize = img.RasterXSize, win_ysize = 1 )
+      valid = np.logical_and( valid, rows[k,:] != nodata[k] )
 
-  pixels = back.sum()
+    pixels += valid.sum()
+    valid = np.logical_not( valid )
 
-  back = np.logical_not( back )
+    for k in bands:
+      rows[k,valid[0,:]] = np.nan
+      s[k,0] += np.nansum( rows[k,:], dtype = np.float64 )
 
-  for array in channels:
+    for i in bands:
+      x = rows[i,:]
+      sigma[i,i] += np.nansum( x * x, dtype = np.float64 )
+      for j in range( i + 1, n ):
+        y = rows[j,:]
+        sigma[i,j] += np.nansum( x * y, dtype = np.float64 )
 
-    array[back] = np.nan
-    mean = np.nansum( array ) / pixels
-    array -= mean
+  ( mean, df, m ) = ( s / pixels, pixels - 1.0, 0 )
 
-  df = pixels - 1.0
-  m = 0
-
-  for i in range( n ):
-    x = channels[i]
-    sigma[i,i] = np.nansum( x * x, dtype = np.float64 ) / df
+  for i in bands:
+    sigma[i,i] = ( sigma[i,i] - s[i,0] * mean[i,0] ) / df
     m += 1
     for j in range( i + 1, n ):
-      y = channels[j]
-      sigma[i,j] = np.nansum( x * y, dtype = np.float64 ) / df
+      sigma[i,j] = ( sigma[i,j] - s[j,0] * mean[i,0] ) / df
       sigma[j,i] = sigma[i,j]
       m += 2
 
@@ -90,7 +90,7 @@ def computePCA( img, args ):
   print( "" )
 
   for p in w[::-1]:
-    print( "PC%d Percent Info: %f" % ( k, p ) )
+    print( "PC%d Percent Info: %.12f" % ( k, p ) )
     k += 1
 
   return v

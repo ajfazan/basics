@@ -99,13 +99,13 @@ class raster:
       pixels = float( band.Xsize * band.Ysize )
     else:
       pixels = float( np.sum( band != nodata ) )
-      if hist.has_key( nodata ):
+      if nodata in hist.keys():
         del hist[nodata]
 
     assert( pixels == sum( hist.values() ) )
 
     if normalized:
-      for dn in hist.keys():
+      for dn in list( hist.keys() ):
         if hist[dn] == 0:
           del hist[dn]
         else:
@@ -120,6 +120,6 @@ class raster:
 
     hist = self.ComputeBandHistogram( num, True )
 
-    p = np.array( hist.values() )
+    p = np.array( list( hist.values() ) )
 
     return -np.sum( p * np.log2( p ) )
