@@ -1,4 +1,4 @@
-#!/usr/bin/env osgeo_python
+#!/usr/bin/env python3
 
 from osgeo import gdal, osr
 
@@ -23,7 +23,7 @@ def openImage( filename ):
   handle = gdal.Open( filename )
 
   if handle is None:
-    print "Unable to open image %s" % filename
+    print( "Unable to open image %s" % filename )
     sys.exit( 1 )
 
   return handle
@@ -34,7 +34,7 @@ def main( args ):
 
   for f in args.files:
     img = openImage( f )
-    assert( img.RasterCount == 1 ) # image must be single-band
+    assert( img.RasterCount == 1 ) # input image must be singleband
     band = img.GetRasterBand( 1 )
     array = np.array( band.ReadAsArray(), dtype = np.float64 )
     channels.append( array )
@@ -53,20 +53,17 @@ def main( args ):
   assert( len( ntypes ) == 1 )
   assert( len( pixels ) == 1 )
 
-  if( len( args.values ) ):
+  ( cols, rows ) = ( pixels[0][0], pixels[0][1] )
+  mask = np.ones( ( rows, cols ) )
 
-    ( cols, rows ) = ( pixels[0][0], pixels[0][1] )
-    mask = np.ones( ( rows, cols ) )
+  for band in channels:
+    mask = np.logical_and( mask, band != args.nodata )
 
-    for v in args.values:
-      for band in channels:
-        mask = np.logical_and( mask, band != v )
+  back = np.logical_not( mask )
 
-    back = np.logical_not( mask )
-
-    for k in range( len( channels ) ):
-      channels[k] *= mask
-      channels[k][back] = args.nodata
+  for k in range( len( channels ) ):
+    channels[k] *= mask
+    channels[k][back] = args.nodata
 
   transforms = unique( transforms )
   projections = unique( projections )
@@ -81,7 +78,7 @@ def main( args ):
                                    transforms[0][5]  )
 
     driver = gdal.GetDriverByName( 'GTiff' )
-    opts = [ "TILED=YES", "COMPRESS=LZW", "TFW=YES" ]
+    opts = [ "TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES" ]
     outRaster = driver.Create( args.outfile, cols, rows, len( channels ), ntypes[0], options=opts )
     outRaster.SetGeoTransform( ( ulx, xsize, 0, uly, 0, ysize ) )
 
@@ -98,7 +95,7 @@ def main( args ):
     outRaster = None
 
   else:
-    print "WARNING: Metadata of input imagery differ: No output will be generated"
+    print( "WARNING: Metadata of input imagery differ: No output will be generated" )
 
   return 0
 
